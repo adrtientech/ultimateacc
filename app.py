@@ -501,19 +501,103 @@ def get_general_ledger():
 
 @app.route('/get_trial_balance')
 def get_trial_balance():
+    # Define all account categories with specific accounts
+    all_accounts = {
+        "assets": [
+            "Cash", "Inventory", "Accounts Receivable", "Equipment", 
+            "Building", "Vehicle", "Accumulated Depreciation - Equipment", 
+            "Accumulated Depreciation - Building", "Accumulated Depreciation - Vehicle",
+            "Charity", "Investment"
+        ],
+        "liabilities": ["Accounts Payable"],
+        "equity": ["Share Capital - Ordinary", "Prive"]
+    }
+    
     trial_balance = []
     total_debit = 0
     total_credit = 0
     
+    # Process all predefined accounts
+    for category, accounts in all_accounts.items():
+        for account in accounts:
+            balance = app_data["account_balances"].get(account, 0)
+            
+            # Determine normal balance side for each account type
+            if category == "assets":
+                # Assets have normal debit balance (except accumulated depreciation which is credit)
+                if "Accumulated Depreciation" in account:
+                    # Accumulated depreciation accounts have credit normal balance
+                    trial_balance.append({
+                        "account": account,
+                        "debit": 0,
+                        "credit": abs(balance) if balance != 0 else 0
+                    })
+                    if balance != 0:
+                        total_credit += abs(balance)
+                else:
+                    # Regular assets
+                    if balance >= 0:
+                        trial_balance.append({
+                            "account": account,
+                            "debit": balance,
+                            "credit": 0
+                        })
+                        total_debit += balance
+                    else:
+                        trial_balance.append({
+                            "account": account,
+                            "debit": 0,
+                            "credit": abs(balance)
+                        })
+                        total_credit += abs(balance)
+            
+            elif category == "liabilities":
+                # Liabilities have normal credit balance
+                trial_balance.append({
+                    "account": account,
+                    "debit": 0,
+                    "credit": abs(balance) if balance != 0 else 0
+                })
+                if balance != 0:
+                    total_credit += abs(balance)
+            
+            elif category == "equity":
+                # Equity has normal credit balance (except Prive which is debit)
+                if account == "Prive":
+                    trial_balance.append({
+                        "account": account,
+                        "debit": abs(balance) if balance != 0 else 0,
+                        "credit": 0
+                    })
+                    if balance != 0:
+                        total_debit += abs(balance)
+                else:
+                    # Share Capital
+                    trial_balance.append({
+                        "account": account,
+                        "debit": 0,
+                        "credit": abs(balance) if balance != 0 else 0
+                    })
+                    if balance != 0:
+                        total_credit += abs(balance)
+    
+    # Add any other accounts that exist in the system but not in our predefined list
     for account, balance in app_data["account_balances"].items():
-        if balance != 0:
+        # Check if this account is already included
+        account_exists = False
+        for category_accounts in all_accounts.values():
+            if account in category_accounts:
+                account_exists = True
+                break
+        
+        if not account_exists and balance != 0:
             if balance > 0:
                 trial_balance.append({
                     "account": account,
-                    "debit": abs(balance),
+                    "debit": balance,
                     "credit": 0
                 })
-                total_debit += abs(balance)
+                total_debit += balance
             else:
                 trial_balance.append({
                     "account": account,
