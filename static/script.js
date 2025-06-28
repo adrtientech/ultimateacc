@@ -104,6 +104,27 @@ function setupFormListeners() {
         e.preventDefault();
         submitPayablePayment();
     });
+
+    // Lending/Borrowing forms
+    document.getElementById('lending-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitLending();
+    });
+
+    document.getElementById('borrowing-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitBorrowing();
+    });
+
+    document.getElementById('loan-payment-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitLoanPayment();
+    });
+
+    document.getElementById('debt-repayment-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitDebtRepayment();
+    });
 }
 
 // Language management
@@ -193,6 +214,11 @@ function loadPageData(pageId) {
         case 'investment':
             loadInvestments();
             loadInvestmentSelects();
+            break;
+        case 'lending-borrowing':
+            loadLoansGiven();
+            loadLoansReceived();
+            loadLoanSelects();
             break;
         case 'journal-entry':
             loadJournalEntries();
@@ -956,6 +982,114 @@ function loadBalanceSheet() {
     });
 }
 
+function submitLending() {
+    const formData = new FormData(document.getElementById('lending-form'));
+    const data = Object.fromEntries(formData.entries());
+    
+    fetch('/record_lending', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showMessage(data.message, 'success');
+            document.getElementById('lending-form').reset();
+            loadLoansGiven();
+            loadLoanSelects();
+        } else {
+            showMessage(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showMessage('An error occurred: ' + error.message, 'error');
+    });
+}
+
+function submitBorrowing() {
+    const formData = new FormData(document.getElementById('borrowing-form'));
+    const data = Object.fromEntries(formData.entries());
+    
+    fetch('/record_borrowing', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showMessage(data.message, 'success');
+            document.getElementById('borrowing-form').reset();
+            loadLoansReceived();
+            loadLoanSelects();
+        } else {
+            showMessage(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showMessage('An error occurred: ' + error.message, 'error');
+    });
+}
+
+function submitLoanPayment() {
+    const formData = new FormData(document.getElementById('loan-payment-form'));
+    const data = Object.fromEntries(formData.entries());
+    
+    fetch('/record_loan_payment', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showMessage(data.message, 'success');
+            document.getElementById('loan-payment-form').reset();
+            loadLoansGiven();
+            loadLoanSelects();
+        } else {
+            showMessage(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showMessage('An error occurred: ' + error.message, 'error');
+    });
+}
+
+function submitDebtRepayment() {
+    const formData = new FormData(document.getElementById('debt-repayment-form'));
+    const data = Object.fromEntries(formData.entries());
+    
+    fetch('/record_debt_repayment', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showMessage(data.message, 'success');
+            document.getElementById('debt-repayment-form').reset();
+            loadLoansReceived();
+            loadLoanSelects();
+        } else {
+            showMessage(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showMessage('An error occurred: ' + error.message, 'error');
+    });
+}
+
 // Investment functions
 function loadInvestments() {
     fetch('/get_investments')
@@ -1025,6 +1159,87 @@ function loadDebtorCreditorSelects() {
             const option = document.createElement('option');
             option.value = creditor.name;
             option.textContent = `${creditor.name} (${formatCurrency(creditor.amount)})`;
+            select.appendChild(option);
+        });
+    });
+}
+
+// Lending/Borrowing functions
+function loadLoansGiven() {
+    fetch('/get_loans_given')
+    .then(response => response.json())
+    .then(data => {
+        const tbody = document.getElementById('loans-given-tbody');
+        tbody.innerHTML = '';
+        
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center">No loans given</td></tr>';
+            return;
+        }
+        
+        data.forEach(loan => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${loan.name}</td>
+                <td>${formatCurrency(loan.amount)}</td>
+                <td>${loan.date}</td>
+            `;
+            tbody.appendChild(row);
+        });
+    });
+}
+
+function loadLoansReceived() {
+    fetch('/get_loans_received')
+    .then(response => response.json())
+    .then(data => {
+        const tbody = document.getElementById('loans-received-tbody');
+        tbody.innerHTML = '';
+        
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center">No loans received</td></tr>';
+            return;
+        }
+        
+        data.forEach(loan => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${loan.name}</td>
+                <td>${formatCurrency(loan.amount)}</td>
+                <td>${loan.date}</td>
+            `;
+            tbody.appendChild(row);
+        });
+    });
+}
+
+function loadLoanSelects() {
+    // Load borrowers for loan payment form
+    fetch('/get_loans_given')
+    .then(response => response.json())
+    .then(data => {
+        const select = document.querySelector('#loan-payment-form select[name="borrower_name"]');
+        select.innerHTML = '<option value="">Select Borrower</option>';
+        
+        data.forEach(loan => {
+            const option = document.createElement('option');
+            option.value = loan.name;
+            option.textContent = `${loan.name} (${formatCurrency(loan.amount)})`;
+            select.appendChild(option);
+        });
+    });
+
+    // Load lenders for debt repayment form
+    fetch('/get_loans_received')
+    .then(response => response.json())
+    .then(data => {
+        const select = document.querySelector('#debt-repayment-form select[name="lender_name"]');
+        select.innerHTML = '<option value="">Select Lender</option>';
+        
+        data.forEach(loan => {
+            const option = document.createElement('option');
+            option.value = loan.name;
+            option.textContent = `${loan.name} (${formatCurrency(loan.amount)})`;
             select.appendChild(option);
         });
     });

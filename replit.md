@@ -96,6 +96,8 @@ Preferred communication style: Simple, everyday language.
 
 Changelog:
 - June 28, 2025. Initial setup
+- June 28, 2025. Added lending/borrowing functionality with settlement options
+- June 28, 2025. Fixed Share Capital calculation to automatically include Net Income/Loss
 
 ## Notes for Development
 

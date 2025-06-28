@@ -89,6 +89,11 @@
                                 <i class="fas fa-chart-pie"></i> {{ translations.investment }}
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="showPage('lending-borrowing')">
+                                <i class="fas fa-exchange-alt"></i> {{ translations.lending }}/{{ translations.borrowing }}
+                            </a>
+                        </li>
                     </ul>
                 </div>
 
@@ -652,6 +657,134 @@
                                     </thead>
                                     <tbody id="creditors-tbody">
                                         <!-- Creditors will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lending/Borrowing Page -->
+                <div id="lending-borrowing-page" class="page">
+                    <div class="page-header">
+                        <h3>{{ translations.lending }}/{{ translations.borrowing }}</h3>
+                    </div>
+                    
+                    <!-- Lending/Borrowing Forms -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5>{{ translations.lending }}</h5>
+                            <form id="lending-form" class="form-container">
+                                <div class="mb-3">
+                                    <label class="form-label">{{ translations.borrower_name }}</label>
+                                    <input type="text" class="form-control" name="borrower_name" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">{{ translations.nominal }}</label>
+                                    <input type="number" class="form-control" name="amount" step="0.01" min="0" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Description</label>
+                                    <input type="text" class="form-control" name="description" placeholder="Purpose of loan">
+                                </div>
+                                <button type="submit" class="btn btn-primary">{{ translations.record }}</button>
+                            </form>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h5>{{ translations.borrowing }}</h5>
+                            <form id="borrowing-form" class="form-container">
+                                <div class="mb-3">
+                                    <label class="form-label">{{ translations.lender }}</label>
+                                    <input type="text" class="form-control" name="lender_name" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">{{ translations.nominal }}</label>
+                                    <input type="number" class="form-control" name="amount" step="0.01" min="0" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Description</label>
+                                    <input type="text" class="form-control" name="description" placeholder="Purpose of borrowing">
+                                </div>
+                                <button type="submit" class="btn btn-primary">{{ translations.record }}</button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Loan Settlement Forms -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5>{{ translations.receivables_payment }} (Loan Payment Received)</h5>
+                            <form id="loan-payment-form" class="form-container">
+                                <div class="mb-3">
+                                    <label class="form-label">Borrower</label>
+                                    <select class="form-select" name="borrower_name" required>
+                                        <option value="">Select Borrower</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Payment Amount</label>
+                                    <input type="number" class="form-control" name="payment_amount" step="0.01" min="0" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Purchase with Receivable</label>
+                                    <input type="text" class="form-control" name="purchase_description" placeholder="Optional: Description of purchase made with this loan payment">
+                                </div>
+                                <button type="submit" class="btn btn-primary">{{ translations.record }} Payment</button>
+                            </form>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h5>{{ translations.debt_payment }} (Debt Payment)</h5>
+                            <form id="debt-repayment-form" class="form-container">
+                                <div class="mb-3">
+                                    <label class="form-label">Lender</label>
+                                    <select class="form-select" name="lender_name" required>
+                                        <option value="">Select Lender</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Payment Amount</label>
+                                    <input type="number" class="form-control" name="payment_amount" step="0.01" min="0" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">{{ translations.record }} Payment</button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Lending/Borrowing Lists -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="table-container">
+                                <h5>{{ translations.debtors_list }} (Loans Given)</h5>
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Borrower Name</th>
+                                            <th>Amount</th>
+                                            <th>Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="loans-given-tbody">
+                                        <!-- Loans given will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="table-container">
+                                <h5>{{ translations.creditors_list }} (Loans Received)</h5>
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Lender Name</th>
+                                            <th>Amount</th>
+                                            <th>Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="loans-received-tbody">
+                                        <!-- Loans received will be loaded here -->
                                     </tbody>
                                 </table>
                             </div>

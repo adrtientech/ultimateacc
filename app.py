@@ -952,5 +952,184 @@ def get_balance_sheet():
         "total_liabilities_equity": total_liabilities + total_equity
     })
 
+@app.route('/record_lending', methods=['POST'])
+def record_lending():
+    try:
+        data = request.json
+        borrower_name = data['borrower_name']
+        amount = float(data['amount'])
+        description = data.get('description', '')
+        date = get_current_date()
+        
+        # Journal entry: Dr. Loans Receivable, Cr. Cash
+        create_journal_entry(
+            date=date,
+            description=f"Loan given to {borrower_name}: {description}",
+            debit_account=f"Loans Receivable - {borrower_name}",
+            debit_amount=amount,
+            credit_account="Cash",
+            credit_amount=amount
+        )
+        
+        # Add to debtors list (loans given)
+        app_data["debtor_list"].append({
+            'name': borrower_name,
+            'amount': amount,
+            'date': date,
+            'type': 'loan',
+            'description': description
+        })
+        
+        return jsonify({
+            'success': True,
+            'message': f'Loan of {amount:,.2f} given to {borrower_name} recorded successfully'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/record_borrowing', methods=['POST'])
+def record_borrowing():
+    try:
+        data = request.json
+        lender_name = data['lender_name']
+        amount = float(data['amount'])
+        description = data.get('description', '')
+        date = get_current_date()
+        
+        # Journal entry: Dr. Cash, Cr. Loans Payable
+        create_journal_entry(
+            date=date,
+            description=f"Loan received from {lender_name}: {description}",
+            debit_account="Cash",
+            debit_amount=amount,
+            credit_account=f"Loans Payable - {lender_name}",
+            credit_amount=amount
+        )
+        
+        # Add to creditors list (loans received)
+        app_data["creditor_list"].append({
+            'name': lender_name,
+            'amount': amount,
+            'date': date,
+            'type': 'loan',
+            'description': description
+        })
+        
+        return jsonify({
+            'success': True,
+            'message': f'Loan of {amount:,.2f} received from {lender_name} recorded successfully'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/record_loan_payment', methods=['POST'])
+def record_loan_payment():
+    try:
+        data = request.json
+        borrower_name = data['borrower_name']
+        payment_amount = float(data['payment_amount'])
+        purchase_description = data.get('purchase_description', '')
+        date = get_current_date()
+        
+        # Find borrower
+        borrower = None
+        for i, debtor in enumerate(app_data["debtor_list"]):
+            if debtor['name'] == borrower_name and debtor.get('type') == 'loan':
+                borrower = debtor
+                break
+        
+        if not borrower:
+            return jsonify({'success': False, 'message': 'Borrower not found'})
+        
+        if payment_amount > borrower['amount']:
+            return jsonify({'success': False, 'message': 'Payment amount exceeds loan balance'})
+        
+        # Journal entry for loan payment
+        if purchase_description:
+            # If there's a purchase with receivable
+            create_journal_entry(
+                date=date,
+                description=f"Loan payment from {borrower_name} used for: {purchase_description}",
+                debit_account="Inventory" if "inventory" in purchase_description.lower() else "Equipment",
+                debit_amount=payment_amount,
+                credit_account=f"Loans Receivable - {borrower_name}",
+                credit_amount=payment_amount
+            )
+        else:
+            # Regular cash payment
+            create_journal_entry(
+                date=date,
+                description=f"Loan payment received from {borrower_name}",
+                debit_account="Cash",
+                debit_amount=payment_amount,
+                credit_account=f"Loans Receivable - {borrower_name}",
+                credit_amount=payment_amount
+            )
+        
+        # Update borrower balance
+        borrower['amount'] -= payment_amount
+        if borrower['amount'] <= 0:
+            app_data["debtor_list"].remove(borrower)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Loan payment of {payment_amount:,.2f} from {borrower_name} recorded successfully'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/record_debt_repayment', methods=['POST'])
+def record_debt_repayment():
+    try:
+        data = request.json
+        lender_name = data['lender_name']
+        payment_amount = float(data['payment_amount'])
+        date = get_current_date()
+        
+        # Find lender
+        lender = None
+        for i, creditor in enumerate(app_data["creditor_list"]):
+            if creditor['name'] == lender_name and creditor.get('type') == 'loan':
+                lender = creditor
+                break
+        
+        if not lender:
+            return jsonify({'success': False, 'message': 'Lender not found'})
+        
+        if payment_amount > lender['amount']:
+            return jsonify({'success': False, 'message': 'Payment amount exceeds debt balance'})
+        
+        # Journal entry: Dr. Loans Payable, Cr. Cash
+        create_journal_entry(
+            date=date,
+            description=f"Debt payment to {lender_name}",
+            debit_account=f"Loans Payable - {lender_name}",
+            debit_amount=payment_amount,
+            credit_account="Cash",
+            credit_amount=payment_amount
+        )
+        
+        # Update lender balance
+        lender['amount'] -= payment_amount
+        if lender['amount'] <= 0:
+            app_data["creditor_list"].remove(lender)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Debt payment of {payment_amount:,.2f} to {lender_name} recorded successfully'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/get_loans_given')
+def get_loans_given():
+    loans_given = [debtor for debtor in app_data["debtor_list"] if debtor.get('type') == 'loan']
+    return jsonify(loans_given)
+
+@app.route('/get_loans_received')
+def get_loans_received():
+    loans_received = [creditor for creditor in app_data["creditor_list"] if creditor.get('type') == 'loan']
+    return jsonify(loans_received)
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
