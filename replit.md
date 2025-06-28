@@ -98,6 +98,7 @@ Changelog:
 - June 28, 2025. Initial setup
 - June 28, 2025. Added lending/borrowing functionality with settlement options
 - June 28, 2025. Fixed Share Capital calculation to automatically include Net Income/Loss
+- June 28, 2025. Added sales receivable payment functionality with separate tracking for sales vs other receivables
 
 ## Notes for Development
 

@@ -587,10 +587,36 @@
                         </div>
                     </div>
                     
+                    <!-- Sales Receivables Settlement -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <h5>Sales Receivable Payment (Pelunasan Piutang Penjualan)</h5>
+                            <form id="sales-receivable-payment-form" class="form-container">
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Customer Name</label>
+                                        <select class="form-select" name="customer_name" required>
+                                            <option value="">Select Customer</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Payment Amount</label>
+                                        <input type="number" class="form-control" name="payment_amount" step="0.01" min="0" required>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Purchase Description (Optional)</label>
+                                        <input type="text" class="form-control" name="purchase_description" placeholder="Used for inventory purchase, equipment, etc.">
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-success">Record Sales Receivable Payment</button>
+                            </form>
+                        </div>
+                    </div>
+
                     <!-- Settlement Forms -->
                     <div class="row mb-4">
                         <div class="col-md-6">
-                            <h5>Receivable Payment (Pelunasan Piutang)</h5>
+                            <h5>Other Receivable Payment (Pelunasan Piutang Lain)</h5>
                             <form id="receivable-payment-form" class="form-container">
                                 <div class="mb-3">
                                     <label class="form-label">Debtor</label>
@@ -624,11 +650,34 @@
                         </div>
                     </div>
                     
+                    <!-- Sales Receivables Table -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <div class="table-container">
+                                <h5>Sales Receivables (Piutang Penjualan)</h5>
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Customer</th>
+                                            <th>Amount</th>
+                                            <th>Product</th>
+                                            <th>Quantity</th>
+                                            <th>Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="sales-receivables-tbody">
+                                        <!-- Sales receivables will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Existing Tables -->
                     <div class="row">
                         <div class="col-md-6">
                             <div class="table-container">
-                                <h5>{{ translations.debtors_list }}</h5>
+                                <h5>{{ translations.debtors_list }} (Other)</h5>
                                 <table class="table table-striped">
                                     <thead>
                                         <tr>

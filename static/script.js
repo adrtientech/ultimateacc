@@ -125,6 +125,12 @@ function setupFormListeners() {
         e.preventDefault();
         submitDebtRepayment();
     });
+
+    // Sales receivable payment form
+    document.getElementById('sales-receivable-payment-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitSalesReceivablePayment();
+    });
 }
 
 // Language management
@@ -207,6 +213,8 @@ function loadPageData(pageId) {
         case 'payables-receivables':
             loadDebtorsAndCreditors();
             loadDebtorCreditorSelects();
+            loadSalesReceivables();
+            loadSalesReceivableSelects();
             break;
         case 'charity':
             // No specific data to load
@@ -641,7 +649,15 @@ function loadDebtorsAndCreditors() {
             return;
         }
         
-        data.forEach(debtor => {
+        // Filter out sales and loan receivables to show only other debtors
+        const otherDebtors = data.filter(debtor => debtor.type !== 'sales' && debtor.type !== 'loan');
+        
+        if (otherDebtors.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center">No other debtors found</td></tr>';
+            return;
+        }
+        
+        otherDebtors.forEach(debtor => {
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${debtor.name}</td>
@@ -1140,7 +1156,10 @@ function loadDebtorCreditorSelects() {
         const select = document.querySelector('#receivable-payment-form select[name="debtor_name"]');
         select.innerHTML = '<option value="">Select Debtor</option>';
         
-        data.forEach(debtor => {
+        // Filter out sales and loan receivables
+        const otherDebtors = data.filter(debtor => debtor.type !== 'sales' && debtor.type !== 'loan');
+        
+        otherDebtors.forEach(debtor => {
             const option = document.createElement('option');
             option.value = debtor.name;
             option.textContent = `${debtor.name} (${formatCurrency(debtor.amount)})`;
@@ -1161,6 +1180,34 @@ function loadDebtorCreditorSelects() {
             option.textContent = `${creditor.name} (${formatCurrency(creditor.amount)})`;
             select.appendChild(option);
         });
+    });
+}
+
+function submitSalesReceivablePayment() {
+    const formData = new FormData(document.getElementById('sales-receivable-payment-form'));
+    const data = Object.fromEntries(formData.entries());
+    
+    fetch('/record_sales_receivable_payment', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showMessage(data.message, 'success');
+            document.getElementById('sales-receivable-payment-form').reset();
+            loadSalesReceivables();
+            loadSalesReceivableSelects();
+            loadDebtorsAndCreditors();
+        } else {
+            showMessage(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showMessage('An error occurred: ' + error.message, 'error');
     });
 }
 
@@ -1240,6 +1287,48 @@ function loadLoanSelects() {
             const option = document.createElement('option');
             option.value = loan.name;
             option.textContent = `${loan.name} (${formatCurrency(loan.amount)})`;
+            select.appendChild(option);
+        });
+    });
+}
+
+function loadSalesReceivables() {
+    fetch('/get_sales_receivables')
+    .then(response => response.json())
+    .then(data => {
+        const tbody = document.getElementById('sales-receivables-tbody');
+        tbody.innerHTML = '';
+        
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center">No sales receivables</td></tr>';
+            return;
+        }
+        
+        data.forEach(receivable => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${receivable.name}</td>
+                <td>${formatCurrency(receivable.amount)}</td>
+                <td>${receivable.product || '-'}</td>
+                <td>${receivable.quantity || '-'}</td>
+                <td>${receivable.date}</td>
+            `;
+            tbody.appendChild(row);
+        });
+    });
+}
+
+function loadSalesReceivableSelects() {
+    fetch('/get_sales_receivables')
+    .then(response => response.json())
+    .then(data => {
+        const select = document.querySelector('#sales-receivable-payment-form select[name="customer_name"]');
+        select.innerHTML = '<option value="">Select Customer</option>';
+        
+        data.forEach(receivable => {
+            const option = document.createElement('option');
+            option.value = receivable.name;
+            option.textContent = `${receivable.name} (${formatCurrency(receivable.amount)}) - ${receivable.product}`;
             select.appendChild(option);
         });
     });

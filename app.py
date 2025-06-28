@@ -420,7 +420,10 @@ def record_sale():
             app_data["debtor_list"].append({
                 "name": sale['customer'],
                 "amount": sale["total"],
-                "date": sale["date"]
+                "date": sale["date"],
+                "type": "sales",
+                "product": sale['product_name'],
+                "quantity": sale['quantity']
             })
         
         return jsonify({"success": True, "message": "Sale recorded successfully!"})
@@ -1130,6 +1133,67 @@ def get_loans_given():
 def get_loans_received():
     loans_received = [creditor for creditor in app_data["creditor_list"] if creditor.get('type') == 'loan']
     return jsonify(loans_received)
+
+@app.route('/get_sales_receivables')
+def get_sales_receivables():
+    sales_receivables = [debtor for debtor in app_data["debtor_list"] if debtor.get('type') == 'sales']
+    return jsonify(sales_receivables)
+
+@app.route('/record_sales_receivable_payment', methods=['POST'])
+def record_sales_receivable_payment():
+    try:
+        data = request.json
+        customer_name = data['customer_name']
+        payment_amount = float(data['payment_amount'])
+        purchase_description = data.get('purchase_description', '')
+        date = get_current_date()
+        
+        # Find customer
+        customer = None
+        for i, debtor in enumerate(app_data["debtor_list"]):
+            if debtor['name'] == customer_name and debtor.get('type') == 'sales':
+                customer = debtor
+                break
+        
+        if not customer:
+            return jsonify({'success': False, 'message': 'Customer not found'})
+        
+        if payment_amount > customer['amount']:
+            return jsonify({'success': False, 'message': 'Payment amount exceeds receivable balance'})
+        
+        # Journal entry for receivable payment
+        if purchase_description:
+            # If there's a purchase with receivable settlement
+            create_journal_entry(
+                date=date,
+                description=f"Sales receivable payment from {customer_name} used for: {purchase_description}",
+                debit_account="Inventory" if "inventory" in purchase_description.lower() else "Equipment",
+                debit_amount=payment_amount,
+                credit_account="Accounts Receivable",
+                credit_amount=payment_amount
+            )
+        else:
+            # Regular cash payment
+            create_journal_entry(
+                date=date,
+                description=f"Sales receivable payment received from {customer_name}",
+                debit_account="Cash",
+                debit_amount=payment_amount,
+                credit_account="Accounts Receivable",
+                credit_amount=payment_amount
+            )
+        
+        # Update customer balance
+        customer['amount'] -= payment_amount
+        if customer['amount'] <= 0:
+            app_data["debtor_list"].remove(customer)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Sales receivable payment of {payment_amount:,.2f} from {customer_name} recorded successfully'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
