@@ -584,6 +584,61 @@ function loadBalanceSheet() {
     .then(data => {
         const container = document.getElementById('balance-sheet-content');
         
+        // Build assets section
+        let assetsHtml = '';
+        Object.entries(data.asset_accounts).forEach(([account, balance]) => {
+            if (balance !== 0 || account === 'Cash' || account === 'Inventory' || account === 'Accounts Receivable') {
+                const displayBalance = account.includes('Accumulated Depreciation') 
+                    ? `(${formatCurrency(Math.abs(balance))})` 
+                    : formatCurrency(Math.abs(balance));
+                assetsHtml += `
+                    <div class="statement-item">
+                        <span>${account}</span>
+                        <span>${displayBalance}</span>
+                    </div>
+                `;
+            }
+        });
+        
+        // Build liabilities section
+        let liabilitiesHtml = '';
+        Object.entries(data.liability_accounts).forEach(([account, balance]) => {
+            liabilitiesHtml += `
+                <div class="statement-item">
+                    <span>${account}</span>
+                    <span>${formatCurrency(Math.abs(balance))}</span>
+                </div>
+            `;
+        });
+        
+        // Build equity section
+        let equityHtml = '';
+        Object.entries(data.equity_accounts).forEach(([account, balance]) => {
+            if (account === 'Share Capital - Ordinary') {
+                equityHtml += `
+                    <div class="statement-item">
+                        <span>${account}</span>
+                        <span>${formatCurrency(Math.abs(balance))}</span>
+                    </div>
+                `;
+                if (data.net_income !== 0) {
+                    equityHtml += `
+                        <div class="statement-item">
+                            <span>&nbsp;&nbsp;&nbsp;&nbsp;Net Income/Loss</span>
+                            <span>${formatCurrency(data.net_income)}</span>
+                        </div>
+                    `;
+                }
+            } else if (account === 'Prive' && balance !== 0) {
+                equityHtml += `
+                    <div class="statement-item">
+                        <span>${account}</span>
+                        <span>(${formatCurrency(Math.abs(balance))})</span>
+                    </div>
+                `;
+            }
+        });
+        
         container.innerHTML = `
             <div class="financial-statement">
                 <h4>BALANCE SHEET</h4>
@@ -592,10 +647,7 @@ function loadBalanceSheet() {
                     <div class="col-md-6">
                         <div class="statement-section">
                             <div class="statement-title">ASSETS</div>
-                            <div class="statement-item">
-                                <span>Current Assets</span>
-                                <span>${formatCurrency(data.assets)}</span>
-                            </div>
+                            ${assetsHtml}
                             <div class="statement-total">
                                 <div class="statement-item">
                                     <span><strong>TOTAL ASSETS</strong></span>
@@ -608,17 +660,23 @@ function loadBalanceSheet() {
                     <div class="col-md-6">
                         <div class="statement-section">
                             <div class="statement-title">LIABILITIES</div>
-                            <div class="statement-item">
-                                <span>Current Liabilities</span>
-                                <span>${formatCurrency(data.liabilities)}</span>
+                            ${liabilitiesHtml}
+                            <div class="statement-total">
+                                <div class="statement-item">
+                                    <span><strong>TOTAL LIABILITIES</strong></span>
+                                    <span><strong>${formatCurrency(data.total_liabilities)}</strong></span>
+                                </div>
                             </div>
                         </div>
                         
                         <div class="statement-section">
                             <div class="statement-title">EQUITY</div>
-                            <div class="statement-item">
-                                <span>Share Capital</span>
-                                <span>${formatCurrency(data.equity)}</span>
+                            ${equityHtml}
+                            <div class="statement-total">
+                                <div class="statement-item">
+                                    <span><strong>TOTAL EQUITY</strong></span>
+                                    <span><strong>${formatCurrency(data.total_equity)}</strong></span>
+                                </div>
                             </div>
                         </div>
                         

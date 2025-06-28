@@ -476,7 +476,7 @@ def set_share_capital():
             "Initial share capital investment",
             "Cash",
             capital_amount,
-            "Share Capital",
+            "Share Capital - Ordinary",
             capital_amount
         )
         
@@ -633,24 +633,67 @@ def get_income_statement():
 
 @app.route('/get_balance_sheet')
 def get_balance_sheet():
-    assets = 0
-    liabilities = 0
-    equity = app_data["share_capital"]
+    # Calculate Net Income first
+    revenue = 0
+    expenses = 0
     
     for account, balance in app_data["account_balances"].items():
-        if account in ["Cash", "Accounts Receivable", "Inventory"]:
-            assets += abs(balance)
-        elif account in ["Accounts Payable"]:
-            liabilities += abs(balance)
-        elif account == "Share Capital":
-            equity = abs(balance)
+        if "Revenue" in account or "Sales" in account:
+            revenue += abs(balance)
+        elif "Expense" in account or any(expense in account for expense in expense_types["en"]):
+            expenses += abs(balance)
+    
+    net_income = revenue - expenses
+    
+    # Define detailed account structure
+    asset_accounts = {
+        "Cash": app_data["account_balances"].get("Cash", 0),
+        "Inventory": app_data["account_balances"].get("Inventory", 0),
+        "Accounts Receivable": app_data["account_balances"].get("Accounts Receivable", 0),
+        "Equipment": app_data["account_balances"].get("Equipment", 0),
+        "Building": app_data["account_balances"].get("Building", 0),
+        "Vehicle": app_data["account_balances"].get("Vehicle", 0),
+        "Accumulated Depreciation - Equipment": app_data["account_balances"].get("Accumulated Depreciation - Equipment", 0),
+        "Accumulated Depreciation - Building": app_data["account_balances"].get("Accumulated Depreciation - Building", 0),
+        "Accumulated Depreciation - Vehicle": app_data["account_balances"].get("Accumulated Depreciation - Vehicle", 0),
+        "Charity": app_data["account_balances"].get("Charity", 0),
+        "Investment": app_data["account_balances"].get("Investment", 0)
+    }
+    
+    liability_accounts = {
+        "Accounts Payable": app_data["account_balances"].get("Accounts Payable", 0)
+    }
+    
+    # Share Capital - Ordinary includes Net Income/Loss
+    share_capital_ordinary = app_data["account_balances"].get("Share Capital - Ordinary", 0) + net_income
+    prive = app_data["account_balances"].get("Prive", 0)
+    
+    equity_accounts = {
+        "Share Capital - Ordinary": share_capital_ordinary,
+        "Prive": prive
+    }
+    
+    # Calculate totals
+    total_assets = 0
+    for account, balance in asset_accounts.items():
+        if "Accumulated Depreciation" in account:
+            # Accumulated depreciation reduces total assets
+            total_assets -= abs(balance)
+        else:
+            total_assets += abs(balance)
+    
+    total_liabilities = sum(abs(balance) for balance in liability_accounts.values())
+    total_equity = share_capital_ordinary - abs(prive)  # Prive reduces equity
     
     return jsonify({
-        "assets": assets,
-        "liabilities": liabilities,
-        "equity": equity,
-        "total_assets": assets,
-        "total_liabilities_equity": liabilities + equity
+        "asset_accounts": asset_accounts,
+        "liability_accounts": liability_accounts,
+        "equity_accounts": equity_accounts,
+        "net_income": net_income,
+        "total_assets": total_assets,
+        "total_liabilities": total_liabilities,
+        "total_equity": total_equity,
+        "total_liabilities_equity": total_liabilities + total_equity
     })
 
 if __name__ == '__main__':
