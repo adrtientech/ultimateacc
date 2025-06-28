@@ -65,6 +65,45 @@ function setupFormListeners() {
         e.preventDefault();
         submitExpense();
     });
+
+    // Charity form
+    document.getElementById('charity-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitCharity();
+    });
+
+    // Investment forms
+    document.getElementById('investment-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitInvestment();
+    });
+
+    document.getElementById('sell-investment-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitSellInvestment();
+    });
+
+    // Receivable/Payable forms
+    document.getElementById('receivable-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitReceivable();
+    });
+
+    document.getElementById('payable-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitPayable();
+    });
+
+    // Payment forms
+    document.getElementById('receivable-payment-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitReceivablePayment();
+    });
+
+    document.getElementById('payable-payment-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitPayablePayment();
+    });
 }
 
 // Language management
@@ -146,6 +185,14 @@ function loadPageData(pageId) {
             break;
         case 'payables-receivables':
             loadDebtorsAndCreditors();
+            loadDebtorCreditorSelects();
+            break;
+        case 'charity':
+            // No specific data to load
+            break;
+        case 'investment':
+            loadInvestments();
+            loadInvestmentSelects();
             break;
         case 'journal-entry':
             loadJournalEntries();
@@ -286,6 +333,194 @@ function submitExpense() {
         if (data.success) {
             showMessage(data.message, 'success');
             document.getElementById('expense-form').reset();
+        } else {
+            showMessage(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showMessage('An error occurred: ' + error.message, 'error');
+    });
+}
+
+function submitCharity() {
+    const formData = new FormData(document.getElementById('charity-form'));
+    const data = Object.fromEntries(formData.entries());
+    
+    fetch('/record_charity', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showMessage(data.message, 'success');
+            document.getElementById('charity-form').reset();
+        } else {
+            showMessage(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showMessage('An error occurred: ' + error.message, 'error');
+    });
+}
+
+function submitInvestment() {
+    const formData = new FormData(document.getElementById('investment-form'));
+    const data = Object.fromEntries(formData.entries());
+    
+    fetch('/record_investment', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showMessage(data.message, 'success');
+            document.getElementById('investment-form').reset();
+            loadInvestments();
+            loadInvestmentSelects();
+        } else {
+            showMessage(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showMessage('An error occurred: ' + error.message, 'error');
+    });
+}
+
+function submitSellInvestment() {
+    const formData = new FormData(document.getElementById('sell-investment-form'));
+    const data = Object.fromEntries(formData.entries());
+    
+    fetch('/sell_investment', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const gainLossText = data.gain_loss >= 0 ? `Gain: ${formatCurrency(data.gain_loss)}` : `Loss: ${formatCurrency(Math.abs(data.gain_loss))}`;
+            showMessage(`${data.message} ${gainLossText}`, 'success');
+            document.getElementById('sell-investment-form').reset();
+            loadInvestments();
+            loadInvestmentSelects();
+        } else {
+            showMessage(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showMessage('An error occurred: ' + error.message, 'error');
+    });
+}
+
+function submitReceivable() {
+    const formData = new FormData(document.getElementById('receivable-form'));
+    const data = Object.fromEntries(formData.entries());
+    
+    fetch('/create_receivable', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showMessage(data.message, 'success');
+            document.getElementById('receivable-form').reset();
+            loadDebtorsAndCreditors();
+            loadDebtorCreditorSelects();
+        } else {
+            showMessage(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showMessage('An error occurred: ' + error.message, 'error');
+    });
+}
+
+function submitPayable() {
+    const formData = new FormData(document.getElementById('payable-form'));
+    const data = Object.fromEntries(formData.entries());
+    
+    fetch('/create_payable', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showMessage(data.message, 'success');
+            document.getElementById('payable-form').reset();
+            loadDebtorsAndCreditors();
+            loadDebtorCreditorSelects();
+        } else {
+            showMessage(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showMessage('An error occurred: ' + error.message, 'error');
+    });
+}
+
+function submitReceivablePayment() {
+    const formData = new FormData(document.getElementById('receivable-payment-form'));
+    const data = Object.fromEntries(formData.entries());
+    
+    fetch('/record_receivable_payment', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showMessage(data.message, 'success');
+            document.getElementById('receivable-payment-form').reset();
+            loadDebtorsAndCreditors();
+            loadDebtorCreditorSelects();
+        } else {
+            showMessage(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showMessage('An error occurred: ' + error.message, 'error');
+    });
+}
+
+function submitPayablePayment() {
+    const formData = new FormData(document.getElementById('payable-payment-form'));
+    const data = Object.fromEntries(formData.entries());
+    
+    fetch('/record_payable_payment', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showMessage(data.message, 'success');
+            document.getElementById('payable-payment-form').reset();
+            loadDebtorsAndCreditors();
+            loadDebtorCreditorSelects();
         } else {
             showMessage(data.message, 'error');
         }
@@ -557,14 +792,42 @@ function loadIncomeStatement() {
                         <span>Sales Revenue</span>
                         <span>${formatCurrency(data.revenue)}</span>
                     </div>
+                    <div class="statement-total">
+                        <div class="statement-item">
+                            <span><strong>GROSS INCOME</strong></span>
+                            <span><strong>${formatCurrency(data.gross_income)}</strong></span>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="statement-section">
-                    <div class="statement-title">EXPENSES</div>
+                    <div class="statement-title">OPERATING EXPENSES</div>
                     <div class="statement-item">
                         <span>Total Operating Expenses</span>
                         <span>${formatCurrency(data.expenses)}</span>
                     </div>
+                    <div class="statement-total">
+                        <div class="statement-item">
+                            <span><strong>OPERATING INCOME</strong></span>
+                            <span><strong>${formatCurrency(data.operating_income)}</strong></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="statement-section">
+                    <div class="statement-title">OTHER INCOME AND EXPENSES</div>
+                    ${data.other_income > 0 ? `
+                        <div class="statement-item">
+                            <span>Other Income</span>
+                            <span>${formatCurrency(data.other_income)}</span>
+                        </div>
+                    ` : ''}
+                    ${data.other_expenses > 0 ? `
+                        <div class="statement-item">
+                            <span>Other Expenses</span>
+                            <span>(${formatCurrency(data.other_expenses)})</span>
+                        </div>
+                    ` : ''}
                 </div>
                 
                 <div class="statement-total">
@@ -690,6 +953,80 @@ function loadBalanceSheet() {
                 </div>
             </div>
         `;
+    });
+}
+
+// Investment functions
+function loadInvestments() {
+    fetch('/get_investments')
+    .then(response => response.json())
+    .then(data => {
+        const tbody = document.getElementById('investments-tbody');
+        tbody.innerHTML = '';
+        
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center">No investments found</td></tr>';
+            return;
+        }
+        
+        data.forEach(investment => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${investment.company}</td>
+                <td>${investment.type}</td>
+                <td>${investment.date}</td>
+                <td>${formatCurrency(investment.amount)}</td>
+            `;
+            tbody.appendChild(row);
+        });
+    });
+}
+
+function loadInvestmentSelects() {
+    fetch('/get_investments')
+    .then(response => response.json())
+    .then(data => {
+        const select = document.querySelector('#sell-investment-form select[name="investment_id"]');
+        select.innerHTML = '<option value="">Select Investment</option>';
+        
+        data.forEach((investment, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            option.textContent = `${investment.company} - ${investment.type} (${formatCurrency(investment.amount)})`;
+            select.appendChild(option);
+        });
+    });
+}
+
+function loadDebtorCreditorSelects() {
+    // Load debtors for payment form
+    fetch('/get_debtors')
+    .then(response => response.json())
+    .then(data => {
+        const select = document.querySelector('#receivable-payment-form select[name="debtor_name"]');
+        select.innerHTML = '<option value="">Select Debtor</option>';
+        
+        data.forEach(debtor => {
+            const option = document.createElement('option');
+            option.value = debtor.name;
+            option.textContent = `${debtor.name} (${formatCurrency(debtor.amount)})`;
+            select.appendChild(option);
+        });
+    });
+
+    // Load creditors for payment form
+    fetch('/get_creditors')
+    .then(response => response.json())
+    .then(data => {
+        const select = document.querySelector('#payable-payment-form select[name="creditor_name"]');
+        select.innerHTML = '<option value="">Select Creditor</option>';
+        
+        data.forEach(creditor => {
+            const option = document.createElement('option');
+            option.value = creditor.name;
+            option.textContent = `${creditor.name} (${formatCurrency(creditor.amount)})`;
+            select.appendChild(option);
+        });
     });
 }
 

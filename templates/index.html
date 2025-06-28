@@ -79,6 +79,16 @@
                                 <i class="fas fa-handshake"></i> {{ translations.payables_receivables }}
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="showPage('charity')">
+                                <i class="fas fa-heart"></i> {{ translations.charity }}
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="showPage('investment')">
+                                <i class="fas fa-chart-pie"></i> {{ translations.investment }}
+                            </a>
+                        </li>
                     </ul>
                 </div>
 
@@ -431,6 +441,221 @@
                     </div>
                     <div id="balance-sheet-content">
                         <!-- Balance sheet will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Charity Page -->
+                <div id="charity-page" class="page">
+                    <div class="page-header">
+                        <h3>{{ translations.charity }}</h3>
+                    </div>
+                    <form id="charity-form" class="form-container">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">{{ translations.destination }}</label>
+                                <input type="text" class="form-control" name="destination" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">{{ translations.nominal }}</label>
+                                <input type="number" class="form-control" name="amount" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">{{ translations.record }}</button>
+                    </form>
+                </div>
+
+                <!-- Investment Page -->
+                <div id="investment-page" class="page">
+                    <div class="page-header">
+                        <h3>{{ translations.investment }}</h3>
+                    </div>
+                    
+                    <!-- Investment Forms -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>{{ translations.buy }} {{ translations.investment }}</h5>
+                            <form id="investment-form" class="form-container">
+                                <div class="mb-3">
+                                    <label class="form-label">{{ translations.company_name }}</label>
+                                    <input type="text" class="form-control" name="company_name" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">{{ translations.type_of_investment }}</label>
+                                    <select class="form-select" name="investment_type" required>
+                                        <option value="">Select Type</option>
+                                        <option value="Stocks">Stocks</option>
+                                        <option value="Bonds">Bonds</option>
+                                        <option value="Mutual Funds">Mutual Funds</option>
+                                        <option value="Real Estate">Real Estate</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">{{ translations.nominal }}</label>
+                                    <input type="number" class="form-control" name="amount" step="0.01" min="0" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">{{ translations.buy }}</button>
+                            </form>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h5>{{ translations.sell }} {{ translations.investment }}</h5>
+                            <form id="sell-investment-form" class="form-container">
+                                <div class="mb-3">
+                                    <label class="form-label">{{ translations.investment }}</label>
+                                    <select class="form-select" name="investment_id" required>
+                                        <option value="">Select Investment</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">{{ translations.final_value }}</label>
+                                    <input type="number" class="form-control" name="sell_amount" step="0.01" min="0" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">{{ translations.sell }}</button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Investment List -->
+                    <div class="table-container mt-4">
+                        <h5>Current Investments</h5>
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>{{ translations.company_name }}</th>
+                                    <th>{{ translations.type_of_investment }}</th>
+                                    <th>{{ translations.date }}</th>
+                                    <th>{{ translations.nominal }}</th>
+                                </tr>
+                            </thead>
+                            <tbody id="investments-tbody">
+                                <!-- Investments will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Enhanced Payables/Receivables Page -->
+                <div id="payables-receivables-page" class="page">
+                    <div class="page-header">
+                        <h3>{{ translations.payables_receivables }}</h3>
+                    </div>
+                    
+                    <!-- Create New Receivable/Payable -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5>Create New Receivable (Piutang)</h5>
+                            <form id="receivable-form" class="form-container">
+                                <div class="mb-3">
+                                    <label class="form-label">Debtor Name</label>
+                                    <input type="text" class="form-control" name="debtor_name" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">{{ translations.nominal }}</label>
+                                    <input type="number" class="form-control" name="amount" step="0.01" min="0" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Description</label>
+                                    <input type="text" class="form-control" name="description" placeholder="Service provided, loan given, etc.">
+                                </div>
+                                <button type="submit" class="btn btn-primary">Create Receivable</button>
+                            </form>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h5>Create New Payable (Utang)</h5>
+                            <form id="payable-form" class="form-container">
+                                <div class="mb-3">
+                                    <label class="form-label">Creditor Name</label>
+                                    <input type="text" class="form-control" name="creditor_name" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">{{ translations.nominal }}</label>
+                                    <input type="number" class="form-control" name="amount" step="0.01" min="0" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Description</label>
+                                    <input type="text" class="form-control" name="description" placeholder="Equipment purchase, service received, etc.">
+                                </div>
+                                <button type="submit" class="btn btn-primary">Create Payable</button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Settlement Forms -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5>Receivable Payment (Pelunasan Piutang)</h5>
+                            <form id="receivable-payment-form" class="form-container">
+                                <div class="mb-3">
+                                    <label class="form-label">Debtor</label>
+                                    <select class="form-select" name="debtor_name" required>
+                                        <option value="">Select Debtor</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Payment Amount</label>
+                                    <input type="number" class="form-control" name="payment_amount" step="0.01" min="0" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Record Payment</button>
+                            </form>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h5>Payable Payment (Pelunasan Utang)</h5>
+                            <form id="payable-payment-form" class="form-container">
+                                <div class="mb-3">
+                                    <label class="form-label">Creditor</label>
+                                    <select class="form-select" name="creditor_name" required>
+                                        <option value="">Select Creditor</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Payment Amount</label>
+                                    <input type="number" class="form-control" name="payment_amount" step="0.01" min="0" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Record Payment</button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Existing Tables -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="table-container">
+                                <h5>{{ translations.debtors_list }}</h5>
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Amount</th>
+                                            <th>Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="debtors-tbody">
+                                        <!-- Debtors will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="table-container">
+                                <h5>{{ translations.creditors_list }}</h5>
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Amount</th>
+                                            <th>Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="creditors-tbody">
+                                        <!-- Creditors will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </main>

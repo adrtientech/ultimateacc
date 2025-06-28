@@ -452,7 +452,7 @@ def record_expense():
         create_journal_entry(
             get_current_date(),
             f"{expense_type} - {destination}",
-            expense_type,
+            f"{expense_type} Expense",
             expense_amount,
             "Cash",
             expense_amount
@@ -462,6 +462,250 @@ def record_expense():
         
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 400
+
+@app.route('/record_charity', methods=['POST'])
+def record_charity():
+    try:
+        data = request.json
+        
+        charity_amount = float(data['amount'])
+        destination = data.get('destination', '')
+        
+        create_journal_entry(
+            get_current_date(),
+            f"Charity donation - {destination}",
+            "Charity",
+            charity_amount,
+            "Cash",
+            charity_amount
+        )
+        
+        return jsonify({"success": True, "message": "Charity recorded successfully!"})
+        
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 400
+
+@app.route('/record_investment', methods=['POST'])
+def record_investment():
+    try:
+        data = request.json
+        
+        investment_amount = float(data['amount'])
+        investment_type = data['investment_type']
+        company_name = data.get('company_name', '')
+        
+        investment = {
+            "date": get_current_date(),
+            "type": investment_type,
+            "company": company_name,
+            "amount": investment_amount,
+            "current_value": investment_amount
+        }
+        
+        app_data["investments"].append(investment)
+        
+        create_journal_entry(
+            get_current_date(),
+            f"Investment in {company_name} - {investment_type}",
+            "Investment",
+            investment_amount,
+            "Cash",
+            investment_amount
+        )
+        
+        return jsonify({"success": True, "message": "Investment recorded successfully!"})
+        
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 400
+
+@app.route('/sell_investment', methods=['POST'])
+def sell_investment():
+    try:
+        data = request.json
+        
+        investment_id = int(data['investment_id'])
+        sell_amount = float(data['sell_amount'])
+        
+        if investment_id < len(app_data["investments"]):
+            investment = app_data["investments"][investment_id]
+            original_amount = investment["amount"]
+            gain_loss = sell_amount - original_amount
+            
+            # Record sale
+            create_journal_entry(
+                get_current_date(),
+                f"Sale of investment in {investment['company']}",
+                "Cash",
+                sell_amount,
+                "Investment",
+                original_amount
+            )
+            
+            # Record gain or loss
+            if gain_loss > 0:
+                create_journal_entry(
+                    get_current_date(),
+                    f"Gain on sale of investment",
+                    "Cash",
+                    0,
+                    "Investment Gain",
+                    gain_loss
+                )
+            elif gain_loss < 0:
+                create_journal_entry(
+                    get_current_date(),
+                    f"Loss on sale of investment",
+                    "Investment Loss",
+                    abs(gain_loss),
+                    "Cash",
+                    0
+                )
+            
+            # Remove investment from list
+            app_data["investments"].pop(investment_id)
+            
+            return jsonify({"success": True, "message": "Investment sold successfully!", "gain_loss": gain_loss})
+        else:
+            return jsonify({"success": False, "message": "Investment not found"}), 404
+        
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 400
+
+@app.route('/record_receivable_payment', methods=['POST'])
+def record_receivable_payment():
+    try:
+        data = request.json
+        
+        debtor_name = data['debtor_name']
+        payment_amount = float(data['payment_amount'])
+        
+        # Find and update debtor
+        for i, debtor in enumerate(app_data["debtor_list"]):
+            if debtor['name'] == debtor_name:
+                if payment_amount <= debtor['amount']:
+                    create_journal_entry(
+                        get_current_date(),
+                        f"Payment received from {debtor_name}",
+                        "Cash",
+                        payment_amount,
+                        "Accounts Receivable",
+                        payment_amount
+                    )
+                    
+                    debtor['amount'] -= payment_amount
+                    if debtor['amount'] == 0:
+                        app_data["debtor_list"].pop(i)
+                    
+                    return jsonify({"success": True, "message": "Receivable payment recorded successfully!"})
+                else:
+                    return jsonify({"success": False, "message": "Payment amount exceeds receivable balance"}), 400
+        
+        return jsonify({"success": False, "message": "Debtor not found"}), 404
+        
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 400
+
+@app.route('/record_payable_payment', methods=['POST'])
+def record_payable_payment():
+    try:
+        data = request.json
+        
+        creditor_name = data['creditor_name']
+        payment_amount = float(data['payment_amount'])
+        
+        # Find and update creditor
+        for i, creditor in enumerate(app_data["creditor_list"]):
+            if creditor['name'] == creditor_name:
+                if payment_amount <= creditor['amount']:
+                    create_journal_entry(
+                        get_current_date(),
+                        f"Payment made to {creditor_name}",
+                        "Accounts Payable",
+                        payment_amount,
+                        "Cash",
+                        payment_amount
+                    )
+                    
+                    creditor['amount'] -= payment_amount
+                    if creditor['amount'] == 0:
+                        app_data["creditor_list"].pop(i)
+                    
+                    return jsonify({"success": True, "message": "Payable payment recorded successfully!"})
+                else:
+                    return jsonify({"success": False, "message": "Payment amount exceeds payable balance"}), 400
+        
+        return jsonify({"success": False, "message": "Creditor not found"}), 404
+        
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 400
+
+@app.route('/create_receivable', methods=['POST'])
+def create_receivable():
+    try:
+        data = request.json
+        
+        debtor_name = data['debtor_name']
+        amount = float(data['amount'])
+        description = data.get('description', 'Other receivable')
+        
+        receivable = {
+            "name": debtor_name,
+            "amount": amount,
+            "date": get_current_date(),
+            "description": description
+        }
+        
+        app_data["debtor_list"].append(receivable)
+        
+        create_journal_entry(
+            get_current_date(),
+            f"Receivable from {debtor_name} - {description}",
+            "Accounts Receivable",
+            amount,
+            "Other Income",
+            amount
+        )
+        
+        return jsonify({"success": True, "message": "Receivable created successfully!"})
+        
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 400
+
+@app.route('/create_payable', methods=['POST'])
+def create_payable():
+    try:
+        data = request.json
+        
+        creditor_name = data['creditor_name']
+        amount = float(data['amount'])
+        description = data.get('description', 'Other payable')
+        
+        payable = {
+            "name": creditor_name,
+            "amount": amount,
+            "date": get_current_date(),
+            "description": description
+        }
+        
+        app_data["creditor_list"].append(payable)
+        
+        create_journal_entry(
+            get_current_date(),
+            f"Payable to {creditor_name} - {description}",
+            "Equipment" if "equipment" in description.lower() else "Other Expense",
+            amount,
+            "Accounts Payable",
+            amount
+        )
+        
+        return jsonify({"success": True, "message": "Payable created successfully!"})
+        
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 400
+
+@app.route('/get_investments')
+def get_investments():
+    return jsonify(app_data["investments"])
 
 @app.route('/set_share_capital', methods=['POST'])
 def set_share_capital():
@@ -616,18 +860,30 @@ def get_trial_balance():
 def get_income_statement():
     revenue = 0
     expenses = 0
+    other_income = 0
+    other_expenses = 0
     
     for account, balance in app_data["account_balances"].items():
-        if "Revenue" in account or "Sales" in account:
+        if "Revenue" in account or "Sales Revenue" in account:
             revenue += abs(balance)
-        elif "Expense" in account or any(expense in account for expense in expense_types["en"]):
+        elif "Expense" in account:
             expenses += abs(balance)
+        elif "Investment Gain" in account or "Other Income" in account:
+            other_income += abs(balance)
+        elif "Investment Loss" in account:
+            other_expenses += abs(balance)
     
-    net_income = revenue - expenses
+    gross_income = revenue
+    operating_income = gross_income - expenses
+    net_income = operating_income + other_income - other_expenses
     
     return jsonify({
         "revenue": revenue,
         "expenses": expenses,
+        "other_income": other_income,
+        "other_expenses": other_expenses,
+        "gross_income": gross_income,
+        "operating_income": operating_income,
         "net_income": net_income
     })
 
