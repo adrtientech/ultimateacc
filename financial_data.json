@@ -1,0 +1,14 @@
+{
+    "product_list": [],
+    "journal_entries": [],
+    "sales_records": [],
+    "debtor_list": [],
+    "creditor_list": [],
+    "fixed_assets": [],
+    "investments": [],
+    "share_capital": 0,
+    "general_ledger": {},
+    "account_balances": {},
+    "ppe_assets": [],
+    "depreciation_history": []
+}

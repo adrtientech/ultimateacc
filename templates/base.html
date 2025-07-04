@@ -7,6 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+    
 </head>
 <body>
     <div class="container-fluid">
@@ -17,5 +18,41 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
     {% block scripts %}{% endblock %}
+
+<div id="setup-modal-overlay" class="setup-modal-overlay">
+    <div class="setup-modal-content">
+        <div class="setup-modal-header">
+            <h2 class="welcome-title">Selamat Datang di Aplikasi Keuangan!</h2>
+            <p class="welcome-subtitle">Silakan atur nama perusahaan dan mata uang default Anda untuk memulai.</p>
+        </div>
+        <div class="setup-modal-body">
+            <div class="mb-3">
+                <label for="company-name-input" class="form-label">Nama Perusahaan</label>
+                <input type="text" id="company-name-input" class="form-control" placeholder="Contoh: PT. Usaha Maju Jaya" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Pilih Mata Uang Default</label>
+                <div id="custom-currency-dropdown" class="custom-dropdown-container">
+                    <div class="dropdown-selected-display">
+                        <span id="selected-currency-text">Pilih mata uang...</span>
+                        <i class="fas fa-chevron-down dropdown-arrow"></i>
+                    </div>
+                    <div class="dropdown-options-wrapper">
+                        <div class="dropdown-search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="currency-search-input" placeholder="Cari negara...">
+                        </div>
+                        <ul id="currency-options-list" class="dropdown-options-list">
+                            </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="setup-modal-footer">
+            <button id="save-setup-btn" class="btn btn-primary w-100" disabled>Simpan dan Mulai</button>
+        </div>
+    </div>
+</div>
+
 </body>
 </html>

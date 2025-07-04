@@ -4,7 +4,6 @@
 
 {% block content %}
 <div class="accounting-app">
-    <!-- Header -->
     <header class="app-header text-center py-4 mb-4">
         <div class="row align-items-center">
             <div class="col-md-4">
@@ -16,17 +15,31 @@
                     </select>
                 </div>
             </div>
+
             <div class="col-md-4">
-                <h1 class="app-title mb-0">{{ translations.title }}</h1>
+                <h1 class="app-title mb-1">{{ translations.title }}</h1>
+                <!-- Tampilkan info perusahaan dan mata uang jika sudah ada -->
+                {% if company_name and currency_info %}
+                <p class="app-subtitle mb-0">
+                    {{ company_name }} - {{ currency_info.symbol }} {{ currency_info.code }}
+                </p>
+                {% endif %}
             </div>
-            <div class="col-md-4">
-                <p class="app-subtitle mb-0">{{ translations.financial_statement }}</p>
+
+            <div class="col-md-4 d-flex justify-content-end align-items-center">
+                <button id="refresh-btn" class="btn btn-outline-info btn-sm me-2" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Refresh Current View">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+                <button id="undo-btn" class="btn btn-outline-warning btn-sm" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Undo Last Transaction">
+                    <i class="fas fa-undo"></i> Undo
+                </button>
+                
+                <p class="app-subtitle mb-0 ms-3">{{ translations.financial_statement }}</p>
             </div>
         </div>
     </header>
 
     <div class="row">
-        <!-- Navigation Sidebar -->
         <div class="col-md-3">
             <nav class="nav-sidebar">
                 <div class="nav-section">
@@ -42,8 +55,15 @@
                                 <i class="fas fa-dollar-sign"></i> {{ translations.share_capital }}
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="showPage('ppe')">
+                                <i class="fas fa-building"></i> Aset Tetap (PPE)
+                            </a>
+                        </li>
                     </ul>
                 </div>
+
+    
 
                 <div class="nav-section">
                     <h5 class="nav-section-title">{{ translations.income }}</h5>
@@ -125,15 +145,14 @@
                                 <i class="fas fa-clipboard-list"></i> {{ translations.balance_sheet }}
                             </a>
                         </li>
+                        <li class="nav-item">
                     </ul>
                 </div>
             </nav>
         </div>
 
-        <!-- Main Content Area -->
         <div class="col-md-9">
             <main class="main-content">
-                <!-- Home Page -->
                 <div id="home-page" class="page active">
                     <div class="welcome-section text-center py-5">
                         <h2 class="welcome-title">{{ translations.financial_statement }}</h2>
@@ -164,7 +183,6 @@
                     </div>
                 </div>
 
-                <!-- Product Stocking Page -->
                 <div id="product-stocking-page" class="page">
                     <div class="page-header">
                         <h3>{{ translations.product_stocking }}</h3>
@@ -198,7 +216,6 @@
                     </form>
                 </div>
 
-                <!-- Share Capital Page -->
                 <div id="share-capital-page" class="page">
                     <div class="page-header">
                         <h3>{{ translations.share_capital }}</h3>
@@ -214,7 +231,212 @@
                     </form>
                 </div>
 
-                <!-- Product List Page -->
+                <div id="ppe-page" class="page">
+                    <div class="page-header d-flex justify-content-between align-items-center">
+                        <h3>Manajemen Aset Tetap (PPE)</h3>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#ppe-form-modal">
+                            <i class="fas fa-plus"></i> Tambah Aset Baru
+                        </button>
+                    </div>
+
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-body d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="card-title mb-1">Pencatatan Depresiasi Akhir Periode</h5>
+                                <p class="card-text text-muted">Jalankan proses ini di akhir tahun untuk mencatat semua beban depresiasi.</p>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <select id="depreciation-period-select" class="form-select me-2" style="width: 120px;"></select>
+                                <button id="record-depreciation-btn" class="btn btn-success">
+                                    <i class="fas fa-calculator"></i> Catat Depresiasi
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Nama Aset</th>
+                                    <th>Kategori</th>
+                                    <th>Tgl. Beli</th>
+                                    <th>Harga Perolehan</th>
+                                    <th>Nilai Buku Saat Ini</th>
+                                    <th>Metode Depresiasi</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ppe-table-body">
+                                <tr>
+                                    <td colspan="7" class="text-center">
+                                        <i class="fas fa-spinner fa-spin"></i> Memuat data aset...
+                                    </td>
+                                </tr>
+                                </tbody>
+                        </table>
+                    </div>
+
+                    <div class="text-center mt-3">
+                        <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#depreciation-history-modal">
+                            <i class="fas fa-history"></i> Lihat Riwayat Pencatatan Depresiasi
+                        </button>
+                    </div>
+                </div>
+
+                <div class="modal fade" id="ppe-form-modal" tabindex="-1" aria-labelledby="ppe-modal-title" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="ppe-modal-title">Tambah Aset Tetap Baru</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="ppe-form">
+                                    <input type="hidden" id="ppe-id" name="id">
+                                    <div class="row">
+                                        <div class="col-md-8 mb-3">
+                                            <label class="form-label">Nama Aset</label>
+                                            <input type="text" id="ppe-name" name="name" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Kategori</label>
+                                            <select id="ppe-category" name="category" class="form-select" required>
+                                                <option value="Land">Tanah (Land)</option>
+                                                <option value="Building">Bangunan (Building)</option>
+                                                <option value="Equipment">Peralatan (Equipment)</option>
+                                                <option value="Vehicle">Kendaraan (Vehicle)</option>
+                                                <option value="Furniture and Fixtures">Perabotan (Furniture)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Tanggal Pembelian</label>
+                                            <input type="date" id="ppe-purchase-date" name="purchase_date" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Harga Perolehan</label>
+                                            <input type="number" id="ppe-cost" name="cost" class="form-control" placeholder="Contoh: 5000000" required>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Nilai Residu</label>
+                                            <input type="number" id="ppe-salvage-value" name="salvage_value" class="form-control" placeholder="Contoh: 500000" required>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <h6>Metode Depresiasi</h6>
+                                    <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                            <label class="form-label">Metode</label>
+                                            <select id="ppe-depreciation-method" name="depreciation_method" class="form-select" required>
+                                                <option value="straight_line">Straight-Line</option>
+                                                <option value="double_declining">Double-Declining Balance</option>
+                                                <option value="uop">Units of Production</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Umur Ekonomis (Tahun)</label>
+                                            <input type="number" id="ppe-useful-life" name="useful_life" class="form-control" placeholder="Contoh: 5" required>
+                                        </div>
+                                    </div>
+                                    <div id="uop-fields" class="row" style="display: none;">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Total Estimasi Unit Produksi</label>
+                                            <input type="number" id="uop-total-units" name="uop_total_units" class="form-control">
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                                <button type="submit" form="ppe-form" class="btn btn-primary">Simpan Aset</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal fade" id="depreciation-schedule-modal" tabindex="-1">
+                    <div class="modal-dialog modal-xl">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="schedule-modal-title">Jadwal Depresiasi</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Periode</th>
+                                                <th>Nilai Buku Awal</th>
+                                                <th>Beban Depresiasi</th>
+                                                <th>Akumulasi Depresiasi</th>
+                                                <th>Nilai Buku Akhir</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="depreciation-schedule-body"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal fade" id="depreciation-history-modal" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Riwayat Pencatatan Depresiasi</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Tgl. Catat</th>
+                                            <th>Aset</th>
+                                            <th>Periode</th>
+                                            <th>Jumlah</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="depreciation-history-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Baru untuk Preview Depresiasi -->
+                <div class="modal fade" id="depreciation-preview-modal" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="depreciation-preview-title">Konfirmasi Pencatatan Depresiasi</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>Aset berikut akan dicatat depresiasinya untuk periode yang dipilih. Harap periksa sebelum melanjutkan.</p>
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Nama Aset</th>
+                                            <th>Kategori</th>
+                                            <th>Beban Depresiasi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="depreciation-preview-body"></tbody>
+                                </table>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                                <button type="button" id="confirm-record-depreciation-btn" class="btn btn-success">Ya, Konfirmasi dan Catat</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="product-list-page" class="page">
                     <div class="page-header">
                         <h3>{{ translations.product_list }}</h3>
@@ -232,13 +454,11 @@
                                 </tr>
                             </thead>
                             <tbody id="product-list-tbody">
-                                <!-- Products will be loaded here -->
-                            </tbody>
+                                </tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- Quantity Addition Page -->
                 <div id="quantity-addition-page" class="page">
                     <div class="page-header">
                         <h3>{{ translations.quantity_addition }}</h3>
@@ -260,11 +480,11 @@
                     </form>
                 </div>
 
-                <!-- Sales Page -->
                 <div id="sales-page" class="page">
                     <div class="page-header">
                         <h3>{{ translations.sales }}</h3>
                     </div>
+
                     <form id="sales-form" class="form-container">
                         <div class="row">
                             <div class="col-md-6 mb-3">
@@ -283,6 +503,7 @@
                                     <option value="">Select Product</option>
                                 </select>
                             </div>
+                            
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">{{ translations.quantity }}</label>
                                 <input type="number" class="form-control" name="quantity" min="1" required>
@@ -303,9 +524,44 @@
                         </div>
                         <button type="submit" class="btn btn-primary">{{ translations.record }}</button>
                     </form>
+                    <hr class="my-4">
+
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#settlementModal">
+                            <i class="fas fa-hand-holding-usd"></i> Lakukan Pelunasan Piutang (Receivable Settlement)
+                        </button>
+                    </div>
+
+                    <div class="modal fade" id="settlementModal" tabindex="-1" aria-labelledby="settlementModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="settlementModalLabel">{{ translations.settlement }} ({{ translations.receivable }})</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <form id="sales-receivable-payment-form" class="form-container">
+                                        <div class="mb-3">
+                                            <label for="sales-receivable-select" class="form-label">Unpaid Sales</label>
+                                            <select id="sales-receivable-select" class="form-select" name="receivable_id" required>
+                                                <option value="">Select a receivable to pay...</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="payment-amount-input" class="form-label">Payment Amount</label>
+                                            <input id="payment-amount-input" type="number" class="form-control" name="payment_amount" step="0.01" min="0" required>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">{{ translations.record }} Payment</button>
+                                    </form>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Expense Entry Page -->
                 <div id="expense-entry-page" class="page">
                     <div class="page-header">
                         <h3>{{ translations.expense_entry }}</h3>
@@ -333,50 +589,60 @@
                     </form>
                 </div>
 
-                <!-- Payables and Receivables Page -->
                 <div id="payables-receivables-page" class="page">
-                    <div class="page-header">
-                        <h3>{{ translations.payables_receivables }}</h3>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h5>{{ translations.debtors_list }}</h5>
-                            <div class="table-container">
-                                <table class="table table-sm">
-                                    <thead>
-                                        <tr>
-                                            <th>{{ translations.customer }}</th>
-                                            <th>{{ translations.nominal }}</th>
-                                            <th>{{ translations.date }}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="debtors-tbody">
-                                        <!-- Debtors will be loaded here -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <h5>{{ translations.creditors_list }}</h5>
-                            <div class="table-container">
-                                <table class="table table-sm">
-                                    <thead>
-                                        <tr>
-                                            <th>{{ translations.lender }}</th>
-                                            <th>{{ translations.nominal }}</th>
-                                            <th>{{ translations.date }}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="creditors-tbody">
-                                        <!-- Creditors will be loaded here -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+    <div class="page-header">
+        <h3>{{ translations.payables_receivables }}</h3>
+        <p>Menampilkan daftar semua utang perusahaan dan piutang kepada pihak lain.</p>
+    </div>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">{{ translations.debtors_list }} (Piutang)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Pihak Terkait</th>
+                                    <th>Nominal</th>
+                                    <th>Sumber</th>
+                                    <th>Tanggal</th>
+                                </tr>
+                            </thead>
+                            <tbody id="debtors-tbody">
+                                </tbody>
+                        </table>
                     </div>
                 </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">{{ translations.creditors_list }} (Utang)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Pihak Terkait</th>
+                                    <th>Nominal</th>
+                                    <th>Sumber</th>
+                                    <th>Tanggal</th>
+                                </tr>
+                            </thead>
+                            <tbody id="creditors-tbody"> </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-                <!-- Journal Entry Page -->
                 <div id="journal-entry-page" class="page">
                     <div class="page-header">
                         <h3>{{ translations.journal_entry }}</h3>
@@ -392,23 +658,19 @@
                                 </tr>
                             </thead>
                             <tbody id="journal-entries-tbody">
-                                <!-- Journal entries will be loaded here -->
-                            </tbody>
+                                </tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- General Ledger Page -->
                 <div id="general-ledger-page" class="page">
                     <div class="page-header">
                         <h3>{{ translations.general_ledger }}</h3>
                     </div>
                     <div id="general-ledger-content">
-                        <!-- General ledger will be loaded here -->
-                    </div>
+                        </div>
                 </div>
 
-                <!-- Trial Balance Page -->
                 <div id="trial-balance-page" class="page">
                     <div class="page-header">
                         <h3>{{ translations.trial_balance }}</h3>
@@ -423,33 +685,61 @@
                                 </tr>
                             </thead>
                             <tbody id="trial-balance-tbody">
-                                <!-- Trial balance will be loaded here -->
-                            </tbody>
+                                </tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- Income Statement Page -->
                 <div id="income-statement-page" class="page">
                     <div class="page-header">
                         <h3>{{ translations.income_statement }}</h3>
                     </div>
                     <div id="income-statement-content">
-                        <!-- Income statement will be loaded here -->
-                    </div>
+                        </div>
                 </div>
 
-                <!-- Balance Sheet Page -->
                 <div id="balance-sheet-page" class="page">
                     <div class="page-header">
                         <h3>{{ translations.balance_sheet }}</h3>
                     </div>
                     <div id="balance-sheet-content">
-                        <!-- Balance sheet will be loaded here -->
+                        </div>
+                </div>
+
+                <div id="closing-entry-page" class="page">
+                    <div class="container-fluid">
+                        <h3 class="mb-4">{{ translations.closing_entry }}</h3>
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Lakukan Penutupan Periode Akuntansi?</h5>
+                                <p class="card-text">
+                                    Proses ini akan me-nol-kan semua akun Pendapatan dan Beban, lalu memindahkan laba bersih ke dalam Laba Ditahan (Retained Earnings).
+                                    <br><strong>Tindakan ini tidak dapat dibatalkan.</strong> Pastikan semua transaksi untuk periode ini sudah tercatat.
+                                </p>
+                                <button id="create-closing-entry-btn" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-sync-alt"></i> Ya, Lakukan Proses Penutupan
+                                </button>
+                            </div>
+                        </div>
+                        <div id="closing-entry-result" class="mt-4" style="display:none;">
+                            <h4>Jurnal Penutup yang Dihasilkan:</h4>
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Tanggal</th>
+                                            <th>Nama Akun dan Keterangan</th>
+                                            <th>Debit</th>
+                                            <th>Kredit</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="closing-entry-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Charity Page -->
                 <div id="charity-page" class="page">
                     <div class="page-header">
                         <h3>{{ translations.charity }}</h3>
@@ -469,13 +759,11 @@
                     </form>
                 </div>
 
-                <!-- Investment Page -->
                 <div id="investment-page" class="page">
                     <div class="page-header">
                         <h3>{{ translations.investment }}</h3>
                     </div>
                     
-                    <!-- Investment Forms -->
                     <div class="row">
                         <div class="col-md-6">
                             <h5>{{ translations.buy }} {{ translations.investment }}</h5>
@@ -521,7 +809,6 @@
                         </div>
                     </div>
                     
-                    <!-- Investment List -->
                     <div class="table-container mt-4">
                         <h5>Current Investments</h5>
                         <table class="table table-striped">
@@ -534,192 +821,16 @@
                                 </tr>
                             </thead>
                             <tbody id="investments-tbody">
-                                <!-- Investments will be loaded here -->
-                            </tbody>
+                                </tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- Enhanced Payables/Receivables Page -->
-                <div id="payables-receivables-page" class="page">
-                    <div class="page-header">
-                        <h3>{{ translations.payables_receivables }}</h3>
-                    </div>
-                    
-                    <!-- Create New Receivable/Payable -->
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <h5>Create New Receivable (Piutang)</h5>
-                            <form id="receivable-form" class="form-container">
-                                <div class="mb-3">
-                                    <label class="form-label">Debtor Name</label>
-                                    <input type="text" class="form-control" name="debtor_name" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">{{ translations.nominal }}</label>
-                                    <input type="number" class="form-control" name="amount" step="0.01" min="0" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Description</label>
-                                    <input type="text" class="form-control" name="description" placeholder="Service provided, loan given, etc.">
-                                </div>
-                                <button type="submit" class="btn btn-primary">Create Receivable</button>
-                            </form>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <h5>Create New Payable (Utang)</h5>
-                            <form id="payable-form" class="form-container">
-                                <div class="mb-3">
-                                    <label class="form-label">Creditor Name</label>
-                                    <input type="text" class="form-control" name="creditor_name" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">{{ translations.nominal }}</label>
-                                    <input type="number" class="form-control" name="amount" step="0.01" min="0" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Description</label>
-                                    <input type="text" class="form-control" name="description" placeholder="Equipment purchase, service received, etc.">
-                                </div>
-                                <button type="submit" class="btn btn-primary">Create Payable</button>
-                            </form>
-                        </div>
-                    </div>
-                    
-                    <!-- Sales Receivables Settlement -->
-                    <div class="row mb-4">
-                        <div class="col-md-12">
-                            <h5>Sales Receivable Payment (Pelunasan Piutang Penjualan)</h5>
-                            <form id="sales-receivable-payment-form" class="form-container">
-                                <div class="row">
-                                    <div class="col-md-4 mb-3">
-                                        <label class="form-label">Customer Name</label>
-                                        <select class="form-select" name="customer_name" required>
-                                            <option value="">Select Customer</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4 mb-3">
-                                        <label class="form-label">Payment Amount</label>
-                                        <input type="number" class="form-control" name="payment_amount" step="0.01" min="0" required>
-                                    </div>
-                                    <div class="col-md-4 mb-3">
-                                        <label class="form-label">Purchase Description (Optional)</label>
-                                        <input type="text" class="form-control" name="purchase_description" placeholder="Used for inventory purchase, equipment, etc.">
-                                    </div>
-                                </div>
-                                <button type="submit" class="btn btn-success">Record Sales Receivable Payment</button>
-                            </form>
-                        </div>
-                    </div>
-
-                    <!-- Settlement Forms -->
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <h5>Other Receivable Payment (Pelunasan Piutang Lain)</h5>
-                            <form id="receivable-payment-form" class="form-container">
-                                <div class="mb-3">
-                                    <label class="form-label">Debtor</label>
-                                    <select class="form-select" name="debtor_name" required>
-                                        <option value="">Select Debtor</option>
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Payment Amount</label>
-                                    <input type="number" class="form-control" name="payment_amount" step="0.01" min="0" required>
-                                </div>
-                                <button type="submit" class="btn btn-primary">Record Payment</button>
-                            </form>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <h5>Payable Payment (Pelunasan Utang)</h5>
-                            <form id="payable-payment-form" class="form-container">
-                                <div class="mb-3">
-                                    <label class="form-label">Creditor</label>
-                                    <select class="form-select" name="creditor_name" required>
-                                        <option value="">Select Creditor</option>
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Payment Amount</label>
-                                    <input type="number" class="form-control" name="payment_amount" step="0.01" min="0" required>
-                                </div>
-                                <button type="submit" class="btn btn-primary">Record Payment</button>
-                            </form>
-                        </div>
-                    </div>
-                    
-                    <!-- Sales Receivables Table -->
-                    <div class="row mb-4">
-                        <div class="col-md-12">
-                            <div class="table-container">
-                                <h5>Sales Receivables (Piutang Penjualan)</h5>
-                                <table class="table table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>Customer</th>
-                                            <th>Amount</th>
-                                            <th>Product</th>
-                                            <th>Quantity</th>
-                                            <th>Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="sales-receivables-tbody">
-                                        <!-- Sales receivables will be loaded here -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Existing Tables -->
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="table-container">
-                                <h5>{{ translations.debtors_list }} (Other)</h5>
-                                <table class="table table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>Name</th>
-                                            <th>Amount</th>
-                                            <th>Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="debtors-tbody">
-                                        <!-- Debtors will be loaded here -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="table-container">
-                                <h5>{{ translations.creditors_list }}</h5>
-                                <table class="table table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>Name</th>
-                                            <th>Amount</th>
-                                            <th>Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="creditors-tbody">
-                                        <!-- Creditors will be loaded here -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Lending/Borrowing Page -->
                 <div id="lending-borrowing-page" class="page">
                     <div class="page-header">
                         <h3>{{ translations.lending }}/{{ translations.borrowing }}</h3>
                     </div>
                     
-                    <!-- Lending/Borrowing Forms -->
                     <div class="row mb-4">
                         <div class="col-md-6">
                             <h5>{{ translations.lending }}</h5>
@@ -734,7 +845,7 @@
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">Description</label>
-                                    <input type="text" class="form-control" name="description" placeholder="Purpose of loan">
+                                    <input type="text" class="form-control" name="description" placeholder="Tujuan pinjaman">
                                 </div>
                                 <button type="submit" class="btn btn-primary">{{ translations.record }}</button>
                             </form>
@@ -760,7 +871,6 @@
                         </div>
                     </div>
                     
-                    <!-- Loan Settlement Forms -->
                     <div class="row mb-4">
                         <div class="col-md-6">
                             <h5>{{ translations.receivables_payment }} (Loan Payment Received)</h5>
@@ -801,7 +911,6 @@
                         </div>
                     </div>
                     
-                    <!-- Lending/Borrowing Lists -->
                     <div class="row">
                         <div class="col-md-6">
                             <div class="table-container">
@@ -815,8 +924,7 @@
                                         </tr>
                                     </thead>
                                     <tbody id="loans-given-tbody">
-                                        <!-- Loans given will be loaded here -->
-                                    </tbody>
+                                        </tbody>
                                 </table>
                             </div>
                         </div>
@@ -833,8 +941,7 @@
                                         </tr>
                                     </thead>
                                     <tbody id="loans-received-tbody">
-                                        <!-- Loans received will be loaded here -->
-                                    </tbody>
+                                        </tbody>
                                 </table>
                             </div>
                         </div>
@@ -845,6 +952,5 @@
     </div>
 </div>
 
-<!-- Success/Error Messages -->
 <div id="message-container"></div>
 {% endblock %}

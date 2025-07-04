@@ -1,15 +1,25 @@
+# app.py (Versi yang sudah dimodifikasi)
+
 from flask import Flask, render_template, request, jsonify, session
 from collections import defaultdict
 import datetime
 import os
+import time 
+import atexit  # <<< DITAMBAHKAN: Untuk menjalankan fungsi saat aplikasi berhenti
+
+# <<< DITAMBAHKAN: Impor fungsi dari file data_manager.py
+from data_manager import save_app_data, load_app_data
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'financial_accounting_secret_key_2024')
 
-# Translation dictionary
+# <<< DITAMBAHKAN: Tentukan nama file untuk menyimpan data
+DATA_FILE = "financial_data.json"
+
+# Translation dictionary (tidak ada perubahan di sini)
 translations = {
     "en": {
-        "title": "Financial Accounting Application",
+        "title": "Adrien's Financial",
         "home": "Home",
         "language": "Language",
         "financial_statement": "FINANCIAL STATEMENT OF COMPANY",
@@ -208,7 +218,7 @@ translations = {
     }
 }
 
-# Expense types
+# Expense types (tidak ada perubahan di sini)
 expense_types = {
     "en": [
         "Freight-in (Purchase Shipping Cost)", "Employee Salaries", "Sales/Marketing Salaries",
@@ -236,25 +246,29 @@ expense_types = {
     ]
 }
 
-# Global data storage
-app_data = {
-    "product_list": [],
-    "journal_entries": [],
-    "sales_records": [],
-    "debtor_list": [],
-    "creditor_list": [],
-    "fixed_assets": [],
-    "investments": [],
-    "share_capital": 0,
-    "general_ledger": defaultdict(list),
-    "account_balances": defaultdict(float)
-}
 
-def get_current_date():
-    return datetime.datetime.now().strftime("%Y-%m-%d")
+# <<< DITAMBAHKAN: Logika untuk memuat data saat start
+app_data = load_app_data(DATA_FILE)
 
+if app_data is None:
+    # Jika tidak ada file save, gunakan data default
+    app_data = {
+        "product_list": [],
+        "journal_entries": [],
+        "sales_records": [],
+        "debtor_list": [],
+        "creditor_list": [],
+        "fixed_assets": [],
+        "investments": [],
+        "share_capital": 0,
+        "general_ledger": defaultdict(list),
+        "account_balances": defaultdict(float),
+    }
+
+# <<< DITAMBAHKAN: Mendaftarkan fungsi save untuk dijalankan otomatis saat aplikasi berhenti
+atexit.register(save_app_data, app_data, DATA_FILE)
 def create_journal_entry(date, description, debit_account, debit_amount, credit_account, credit_amount):
-    """Create a journal entry and update general ledger"""
+    """Membuat entri jurnal dan memperbarui buku besar serta saldo akun dengan andal."""
     entry = {
         "date": date,
         "description": description,
@@ -263,34 +277,408 @@ def create_journal_entry(date, description, debit_account, debit_amount, credit_
         "credit_account": credit_account,
         "credit_amount": float(credit_amount)
     }
-    
     app_data["journal_entries"].append(entry)
+
+    # Update buku besar
+    app_data["general_ledger"][debit_account].append({"date": date, "description": description, "debit": float(debit_amount), "credit": 0})
+    app_data["general_ledger"][credit_account].append({"date": date, "description": description, "debit": 0, "credit": float(credit_amount)})
+
+    # Daftar akun yang saldo normalnya ada di sisi DEBIT
+    debit_side_accounts = [
+        "Asset", "Cash", "Inventory", "Accounts Receivable", "Equipment", 
+        "Building", "Vehicle", "Investment", "Expense", "Cost of Goods Sold", 
+        "Prive", "Charity", "Loss", "Accumulated Depreciation"
+    ]
     
-    # Update general ledger
-    app_data["general_ledger"][debit_account].append({
-        "date": date,
-        "description": description,
-        "debit": float(debit_amount),
-        "credit": 0
-    })
-    
-    app_data["general_ledger"][credit_account].append({
-        "date": date,
-        "description": description,
-        "debit": 0,
-        "credit": float(credit_amount)
-    })
-    
-    # Update account balances
-    app_data["account_balances"][debit_account] += float(debit_amount)
-    app_data["account_balances"][credit_account] -= float(credit_amount)
-    
+    # --- LOGIKA KALKULASI SALDO YANG SUDAH DIPERBAIKI ---
+
+    # 1. Proses Akun Sisi Debit Jurnal
+    if any(keyword in debit_account for keyword in debit_side_accounts):
+        # Jika akun normal DEBIT di-debit, saldo BERTAMBAH.
+        app_data["account_balances"][debit_account] += float(debit_amount)
+    else: # Ini adalah akun normal KREDIT (Pendapatan, Utang, Modal)
+        # Jika akun normal KREDIT di-debit, saldo (kredit) BERKURANG.
+        # Contoh: Retur penjualan mengurangi saldo Sales Revenue.
+        # Saldo kredit kita negatif, jadi untuk menguranginya kita TAMBAH.
+        app_data["account_balances"][debit_account] += float(debit_amount) # <<< INI PERBAIKANNYA
+
+    # 2. Proses Akun Sisi Kredit Jurnal
+    if any(keyword in credit_account for keyword in debit_side_accounts):
+        # Jika akun normal DEBIT di-kredit, saldo BERKURANG.
+        # Contoh: Kas berkurang saat bayar beban.
+        app_data["account_balances"][credit_account] -= float(credit_amount)
+    else: # Ini adalah akun normal KREDIT
+        # Jika akun normal KREDIT di-kredit, saldo (kredit) BERTAMBAH.
+        # Contoh: Penjualan menambah saldo Sales Revenue.
+        app_data["account_balances"][credit_account] -= float(credit_amount)
+
     return entry
 
+
+def get_current_date():
+    return datetime.datetime.now().strftime("%Y-%m-%d")
+
+# ... Sisa kode Anda dari baris 248 hingga akhir (TIDAK ADA PERUBAHAN) ...
+# ... Cukup salin dan tempel semua fungsi Anda yang ada di sini ...
+# ... mulai dari 'def create_journal_entry(...)' sampai 'if __name__ == '__main__': ...
+
+# --- Tambahkan kode ini di file app.py ---
+
+# GANTI FUNGSI create_closing_entry YANG SEBELUMNYA DENGAN VERSI FINAL INI
+
+@app.route('/create_closing_entry', methods=['POST'])
+def create_closing_entry():
+    """Menangani seluruh proses jurnal penutup dengan identifikasi akun yang lengkap."""
+    try:
+        closing_date = get_current_date()
+        generated_entries = []
+        revenue_accounts = {}
+        expense_accounts = {}
+
+        # --- LOGIKA IDENTIFIKASI AKUN YANG DISEMPURNAKAN ---
+        # Daftar kata kunci yang lebih lengkap
+        revenue_keywords = ["Revenue", "Sales", "Gain", "Other Income"]
+        expense_keywords = ["Expense", "Cost of Goods Sold", "Loss", "Prive"]
+
+        for account, balance in app_data["account_balances"].items():
+            balance = float(balance or 0)
+            if balance == 0:
+                continue
+
+            # Cek apakah akun ini termasuk akun pendapatan
+            if any(keyword in account for keyword in revenue_keywords):
+                if balance < 0:  # Saldo normal pendapatan adalah kredit (negatif di sistem)
+                    revenue_accounts[account] = abs(balance)
+            
+            # Cek apakah akun ini termasuk akun beban
+            elif any(keyword in account for keyword in expense_keywords):
+                if balance > 0:  # Saldo normal beban adalah debit (positif di sistem)
+                    expense_accounts[account] = balance
+
+        # --- Proses Jurnal Penutup (tidak ada perubahan di sini, tapi sekarang datanya benar) ---
+        total_revenue = sum(revenue_accounts.values())
+        total_expenses = sum(expense_accounts.values())
+        net_income = total_revenue - total_expenses
+
+        # 1. Menutup Akun Pendapatan
+        for account, balance in revenue_accounts.items():
+            entry = create_journal_entry(closing_date, "To close revenue accounts", account, balance, "Income Summary", balance)
+            generated_entries.append(entry)
+
+        # 2. Menutup Akun Beban
+        for account, balance in expense_accounts.items():
+            entry = create_journal_entry(closing_date, "To close expense accounts", "Income Summary", balance, account, balance)
+            generated_entries.append(entry)
+        
+        # 3. Menutup Akun Ikhtisar Laba Rugi ke Laba Ditahan
+        if net_income != 0:
+            if net_income > 0: # Laba
+                entry = create_journal_entry(closing_date, "To transfer net income to Retained Earnings", "Income Summary", net_income, "Retained Earnings", net_income)
+            else: # Rugi
+                entry = create_journal_entry(closing_date, "To transfer net loss to Retained Earnings", "Retained Earnings", abs(net_income), "Income Summary", abs(net_income))
+            generated_entries.append(entry)
+
+        return jsonify({"success": True, "message": "Closing entries created successfully.", "closing_entries": generated_entries})
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+        
 @app.route('/')
 def home():
     language = session.get('language', 'id')
     return render_template('index.html', translations=translations[language], language=language)
+
+# app.py
+# ... (kode Anda yang lain)
+
+# app.py
+
+# ... (Pastikan semua import yang ada tetap di atas)
+import math
+
+# ... (Di bawah definisi app_data, pastikan ada key baru untuk PPE)
+if 'ppe_assets' not in app_data:
+    app_data['ppe_assets'] = []
+if 'depreciation_history' not in app_data:
+    app_data['depreciation_history'] = []
+
+# --- Endpoint untuk Mengelola Aset Tetap (PPE) ---
+
+@app.route('/get_ppe_assets', methods=['GET'])
+def get_ppe_assets():
+    """Mengirim daftar semua aset tetap dengan perhitungan nilai buku terkini."""
+    current_year = datetime.datetime.now().year
+    
+    # Hitung nilai buku untuk setiap aset sebelum mengirim
+    for asset in app_data['ppe_assets']:
+        purchase_year = datetime.datetime.strptime(asset['purchase_date'], '%Y-%m-%d').year
+        
+        # Cari total depresiasi yang sudah dicatat untuk aset ini
+        total_recorded_depreciation = sum(
+            d['amount'] for d in app_data.get('depreciation_history', []) 
+            if d['asset_id'] == asset['id']
+        )
+        asset['accumulated_depreciation'] = total_recorded_depreciation
+        asset['book_value'] = float(asset['cost']) - total_recorded_depreciation
+
+    return jsonify(app_data['ppe_assets'])
+
+# app.py
+
+# app.py
+
+# app.py
+
+@app.route('/add_ppe', methods=['POST'])
+def add_ppe():
+    """Menambah atau mengedit aset tetap."""
+    try:
+        data = request.json
+        asset_id = data.get('id')
+
+        asset_data = {
+            'name': data['name'],
+            'category': data['category'],
+            'purchase_date': data['purchase_date'],
+            'cost': float(data['cost']),
+            'useful_life': int(data['useful_life']),
+            'salvage_value': float(data['salvage_value']),
+            'depreciation_method': data['depreciation_method'],
+            'uop_details': data.get('uop_details', {})
+        }
+
+        if asset_id:
+            # Logika untuk Edit (jika Anda kembangkan nanti)
+            # ...
+            pass
+        else: # Logika untuk Tambah Baru
+            asset_data['id'] = int(time.time() * 1000)
+            app_data['ppe_assets'].append(asset_data)
+            
+            create_journal_entry(
+                date=asset_data['purchase_date'],
+                description=f"Pembelian Aset: {asset_data['name']}",
+                debit_account=f"PPE - {asset_data['category']}",
+                debit_amount=asset_data['cost'],
+                credit_account="Cash",
+                credit_amount=asset_data['cost']
+            )
+            
+            # Perintah penting untuk menyimpan data ke file SECARA LANGSUNG
+            save_app_data(app_data, DATA_FILE)
+            
+            return jsonify({"success": True, "message": "Aset berhasil ditambahkan!"})
+
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Server Error: {str(e)}"}), 400
+        
+@app.route('/get_depreciation_schedule/<int:asset_id>', methods=['GET'])
+def get_depreciation_schedule(asset_id):
+    """Menghitung dan mengembalikan jadwal depresiasi lengkap untuk satu aset."""
+    asset = next((a for a in app_data['ppe_assets'] if a['id'] == asset_id), None)
+    if not asset:
+        return jsonify({"success": False, "message": "Aset tidak ditemukan"}), 404
+
+    schedule = []
+    book_value = float(asset['cost'])
+    cost = float(asset['cost'])
+    salvage = float(asset['salvage_value'])
+    life = int(asset['useful_life'])
+    
+    # Ambil riwayat depresiasi yang sudah dicatat
+    recorded_depreciation = {d['period']: d['amount'] for d in app_data.get('depreciation_history', []) if d['asset_id'] == asset_id}
+
+    for year_num in range(1, life + 1):
+        depreciation_expense = 0
+        current_period = datetime.datetime.strptime(asset['purchase_date'], '%Y-%m-%d').year + year_num -1
+
+        if book_value <= salvage:
+             schedule.append({
+                "period": current_period,
+                "beginning_book_value": book_value,
+                "depreciation_expense": 0,
+                "accumulated_depreciation": cost - book_value,
+                "ending_book_value": book_value,
+                "status": "Fully Depreciated"
+            })
+             continue
+
+
+        # --- LOGIKA PERHITUNGAN DEPRESIASI ---
+        if asset['depreciation_method'] == 'straight_line':
+            depreciation_expense = (cost - salvage) / life
+        
+        elif asset['depreciation_method'] == 'double_declining':
+            depreciation_expense = (book_value * 2) / life
+        
+        # Logika untuk UoP butuh input `units_this_period`
+        # Untuk jadwal, kita bisa asumsikan rata-rata atau tampilkan 0
+        # elif asset['depreciation_method'] == 'uop':
+        #     # Membutuhkan data penggunaan aktual per tahun untuk perhitungan akurat
+        #     depreciation_expense = 0 # Placeholder
+
+        # Pastikan depresiasi tidak membuat nilai buku di bawah nilai residu
+        if (book_value - depreciation_expense) < salvage:
+            depreciation_expense = book_value - salvage
+
+        accumulated_depreciation = (cost - book_value) + depreciation_expense
+        ending_book_value = book_value - depreciation_expense
+
+        status = "Recorded" if current_period in recorded_depreciation else "Not Recorded"
+
+        schedule.append({
+            "period": current_period,
+            "beginning_book_value": book_value,
+            "depreciation_expense": depreciation_expense,
+            "accumulated_depreciation": accumulated_depreciation,
+            "ending_book_value": ending_book_value,
+            "status": status
+        })
+        
+        book_value = ending_book_value # Update nilai buku untuk tahun berikutnya
+
+    return jsonify({"success": True, "schedule": schedule, "asset": asset})
+
+@app.route('/preview_period_depreciation', methods=['POST'])
+def preview_period_depreciation():
+    """Menghitung dan mengembalikan preview aset yang akan didepresiasi tanpa mencatatnya."""
+    try:
+        data = request.json
+        period = int(data['period'])
+        
+        assets_to_depreciate = []
+        
+        for asset in app_data['ppe_assets']:
+            purchase_year = datetime.datetime.strptime(asset['purchase_date'], '%Y-%m-%d').year
+            if period < purchase_year or (period >= purchase_year + asset['useful_life']):
+                continue
+
+            already_recorded = any(
+                d['asset_id'] == asset['id'] and d['period'] == period 
+                for d in app_data.get('depreciation_history', [])
+            )
+            if already_recorded:
+                continue
+                
+            book_value = float(asset['cost']) - sum(d['amount'] for d in app_data.get('depreciation_history', []) if d['asset_id'] == asset['id'])
+            
+            depreciation_expense = 0
+            if asset['depreciation_method'] == 'straight_line':
+                depreciation_expense = (float(asset['cost']) - float(asset['salvage_value'])) / int(asset['useful_life'])
+            elif asset['depreciation_method'] == 'double_declining':
+                depreciation_expense = (book_value * 2) / int(asset['useful_life'])
+            
+            if (book_value - depreciation_expense) < float(asset['salvage_value']):
+                depreciation_expense = book_value - float(asset['salvage_value'])
+                
+            if depreciation_expense > 0:
+                assets_to_depreciate.append({
+                    "id": asset['id'],
+                    "name": asset['name'],
+                    "category": asset['category'],
+                    "depreciation_expense": depreciation_expense
+                })
+
+        return jsonify({"success": True, "preview_data": assets_to_depreciate})
+    except Exception as e:
+        print(f"Error in preview: {e}")
+        return jsonify({"success": False, "message": f"Server Error: {str(e)}"}), 500
+
+@app.route('/record_period_depreciation', methods=['POST'])
+def record_period_depreciation():
+    """Mencatat beban depresiasi untuk semua aset pada periode yang dipilih."""
+    data = request.json
+    period = int(data['period']) # cth: 2024
+    
+    # Ambil jadwal depresiasi untuk semua aset pada periode ini
+    total_depreciation_by_category = defaultdict(float)
+    journal_entries_preview = []
+    
+    for asset in app_data['ppe_assets']:
+        purchase_year = datetime.datetime.strptime(asset['purchase_date'], '%Y-%m-%d').year
+        if period < purchase_year or (period >= purchase_year + asset['useful_life']):
+            continue # Lewati jika aset belum dibeli atau sudah habis masa manfaat
+
+        # Cek apakah sudah pernah dicatat untuk periode ini
+        already_recorded = any(
+            d['asset_id'] == asset['id'] and d['period'] == period 
+            for d in app_data.get('depreciation_history', [])
+        )
+        if already_recorded:
+            continue
+            
+        # Hitung depresiasi untuk periode ini
+        # Ini adalah simplifikasi, idealnya memanggil fungsi yang sama dengan get_depreciation_schedule
+        book_value = float(asset['cost']) - sum(d['amount'] for d in app_data.get('depreciation_history', []) if d['asset_id'] == asset['id'])
+        
+        depreciation_expense = 0
+        if asset['depreciation_method'] == 'straight_line':
+            depreciation_expense = (float(asset['cost']) - float(asset['salvage_value'])) / int(asset['useful_life'])
+        elif asset['depreciation_method'] == 'double_declining':
+            depreciation_expense = (book_value * 2) / int(asset['useful_life'])
+        
+        if (book_value - depreciation_expense) < float(asset['salvage_value']):
+            depreciation_expense = book_value - float(asset['salvage_value'])
+            
+        if depreciation_expense > 0:
+            total_depreciation_by_category[asset['category']] += depreciation_expense
+            # Simpan riwayat pencatatan
+            app_data['depreciation_history'].append({
+                "id": int(time.time() * 1000),
+                "asset_id": asset['id'],
+                "asset_name": asset['name'],
+                "period": period,
+                "amount": depreciation_expense,
+                "date_recorded": get_current_date()
+            })
+
+    # Buat jurnal entri gabungan per kategori
+    for category, total_amount in total_depreciation_by_category.items():
+        if total_amount > 0:
+            entry = create_journal_entry(
+                date=f"{period}-12-31", # Selalu di akhir tahun
+                description=f"Pencatatan Beban Depresiasi Thn. {period} - {category}",
+                debit_account=f"Depreciation Expense - {category}",
+                debit_amount=total_amount,
+                credit_account=f"Accumulated Depreciation - {category}",
+                credit_amount=total_amount
+            )
+            journal_entries_preview.append(entry)
+            
+    if not journal_entries_preview:
+        return jsonify({"success": False, "message": "Tidak ada depresiasi untuk dicatat pada periode ini."})
+
+    return jsonify({"success": True, "message": f"Depresiasi untuk periode {period} berhasil dicatat!", "entries": journal_entries_preview})
+
+@app.route('/get_depreciation_history')
+def get_depreciation_history():
+    return jsonify(app_data.get('depreciation_history', []))
+
+@app.route('/setup', methods=['POST'])
+def handle_setup():
+    """Menerima dan menyimpan data penyiapan awal."""
+    try:
+        data = request.json
+        # Simpan nama perusahaan dan info mata uang ke dalam data aplikasi
+        app_data['company_name'] = data.get('company_name', 'My Company')
+        app_data['currency_info'] = data.get('currency_info', {'code': 'IDR', 'symbol': 'Rp', 'flag': 'id'})
+        
+        # Fungsi save_app_data() akan dipanggil otomatis saat aplikasi berhenti,
+        # jadi data ini akan tersimpan permanen di financial_data.json
+        
+        return jsonify({'success': True, 'message': 'Setup data saved successfully.'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# ... (sisa kode Anda)
+
+# <<< DITAMBAHKAN: Endpoint untuk menyimpan data secara manual
+@app.route('/save_data', methods=['POST'])
+def manual_save():
+    if save_app_data(app_data, DATA_FILE):
+        return jsonify({"success": True, "message": "Data saved successfully!"})
+    else:
+        return jsonify({"success": False, "message": "Failed to save data."}), 500
 
 @app.route('/set_language', methods=['POST'])
 def set_language():
@@ -377,8 +765,9 @@ def add_quantity():
 def record_sale():
     try:
         data = request.json
-        
+        sale_id = int(time.time() * 1000) # Membuat ID unik berdasarkan timestamp
         sale = {
+            "id": sale_id, # <<< Tambahkan ID
             "date": data.get('date', get_current_date()),
             "customer": data['customer'],
             "product_name": data['product_name'],
@@ -387,49 +776,91 @@ def record_sale():
             "total": float(data['price']) * int(data['quantity']),
             "payment_type": data['payment_type']
         }
-        
         app_data["sales_records"].append(sale)
-        
-        # Update product inventory
+
+        cost_of_goods_sold = 0
         for product in app_data["product_list"]:
             if product['name'] == sale['product_name']:
+                if product['current_quantity'] < sale['quantity']:
+                    return jsonify({"success": False, "message": "Not enough stock for this sale."}), 400
                 product['current_quantity'] -= sale['quantity']
+                cost_of_goods_sold = product['purchase_price'] * sale['quantity']
                 break
         
-        # Create journal entries
         if sale['payment_type'] == 'cash':
             create_journal_entry(
-                sale["date"],
-                f"Sale to {sale['customer']}",
-                "Cash",
-                sale["total"],
-                "Sales Revenue",
-                sale["total"]
+                sale["date"], f"Sale to {sale['customer']}",
+                "Cash", sale["total"], "Sales Revenue", sale["total"]
             )
         else:  # receivable
+            receivable_account = f"Accounts Receivable - {sale['customer']}"
             create_journal_entry(
-                sale["date"],
-                f"Sale to {sale['customer']} (on account)",
-                "Accounts Receivable",
-                sale["total"],
-                "Sales Revenue",
-                sale["total"]
+                sale["date"], f"Sale to {sale['customer']} (on account)",
+                receivable_account, sale["total"], "Sales Revenue", sale["total"]
             )
-            
-            # Add to debtor list if not cash
+            # Menambahkan piutang ke daftar debitur dengan ID unik
             app_data["debtor_list"].append({
+                "id": sale_id, # <<< Tambahkan ID
                 "name": sale['customer'],
                 "amount": sale["total"],
                 "date": sale["date"],
                 "type": "sales",
-                "product": sale['product_name'],
-                "quantity": sale['quantity']
+                "description": f"Sale of {sale['product_name']} ({sale['quantity']} pcs)"
             })
+
+        if cost_of_goods_sold > 0:
+            create_journal_entry(
+                sale["date"], f"Cost of goods sold for sale to {sale['customer']}",
+                "Cost of Goods Sold", cost_of_goods_sold, "Inventory", cost_of_goods_sold
+            )
         
         return jsonify({"success": True, "message": "Sale recorded successfully!"})
         
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 400
+
+# app.py
+
+# Route untuk memproses pembayaran piutang penjualan
+@app.route('/record_sales_receivable_payment', methods=['POST'])
+def record_sales_receivable_payment():
+    try:
+        data = request.json
+        receivable_id = int(data['receivable_id'])
+        payment_amount = float(data['payment_amount'])
+        date = get_current_date()
+
+        # Cari piutang yang sesuai di dalam debtor_list
+        receivable_to_pay = None
+        for debtor in app_data["debtor_list"]:
+            if debtor.get("id") == receivable_id:
+                receivable_to_pay = debtor
+                break
+        
+        if not receivable_to_pay:
+            return jsonify({"success": False, "message": "Receivable not found."}), 404
+
+        if payment_amount > receivable_to_pay['amount']:
+            return jsonify({"success": False, "message": "Payment amount exceeds receivable balance."}), 400
+
+        # Buat Jurnal: Debit Kas, Kredit Piutang Usaha
+        receivable_account = f"Accounts Receivable - {receivable_to_pay['name']}"
+        create_journal_entry(
+            date,
+            f"Payment from {receivable_to_pay['name']} for sale",
+            "Cash",
+            payment_amount,
+            receivable_account,
+            payment_amount
+        )
+
+        # Kurangi saldo piutang
+        receivable_to_pay['amount'] -= payment_amount
+        
+        return jsonify({"success": True, "message": "Payment recorded successfully."})
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/get_sales')
 def get_sales():
@@ -443,6 +874,8 @@ def get_debtors():
 def get_creditors():
     return jsonify(app_data["creditor_list"])
 
+# Ganti fungsi record_expense yang lama dengan yang ini di app.py
+
 @app.route('/record_expense', methods=['POST'])
 def record_expense():
     try:
@@ -451,11 +884,18 @@ def record_expense():
         expense_amount = float(data['amount'])
         expense_type = data['expense_type']
         destination = data.get('destination', '')
+
+        # Logika untuk menentukan nama akun debit
+        debit_account_name = ""
+        if expense_type == "Prive":
+            debit_account_name = "Prive"
+        else:
+            debit_account_name = f"{expense_type} Expense"
         
         create_journal_entry(
             get_current_date(),
             f"{expense_type} - {destination}",
-            f"{expense_type} Expense",
+            debit_account_name,  # Gunakan nama akun yang sudah ditentukan
             expense_amount,
             "Cash",
             expense_amount
@@ -738,23 +1178,44 @@ def get_journal_entries():
 
 @app.route('/get_general_ledger')
 def get_general_ledger():
-    ledger_data = {}
+    consolidated_ledger = defaultdict(lambda: {"entries": [], "balance": 0.0})
+
     for account, entries in app_data["general_ledger"].items():
-        ledger_data[account] = {
-            "entries": entries,
-            "balance": app_data["account_balances"][account]
-        }
-    return jsonify(ledger_data)
+        consolidated_key = account # Default key
+        
+        # Logika Konsolidasi
+        if account.startswith("Accounts Receivable"):
+            consolidated_key = "Accounts Receivable"
+        elif account.startswith("Accounts Payable"):
+            consolidated_key = "Accounts Payable"
+        # JANGAN GABUNGKAN LOANS RECEIVABLE/PAYABLE KE DALAMNYA, BIARKAN SEBAGAI AKUN TERPISAH
+        # elif account.startswith("Loans Receivable"):
+        #     consolidated_key = "Loans Receivable"
+        # elif account.startswith("Loans Payable"):
+        #     consolidated_key = "Loans Payable"
+
+        consolidated_ledger[consolidated_key]["entries"].extend(entries)
+        
+        balance = app_data["account_balances"].get(account, 0)
+        consolidated_ledger[consolidated_key]["balance"] += balance
+
+    final_ledger_data = {}
+    for account, data in consolidated_ledger.items():
+        if data["entries"]:
+            sorted_entries = sorted(data["entries"], key=lambda x: x.get('date', '1970-01-01'))
+            data["entries"] = sorted_entries
+            final_ledger_data[account] = data
+
+    return jsonify(final_ledger_data)
 
 @app.route('/get_trial_balance')
 def get_trial_balance():
     # Define all account categories with specific accounts
     all_accounts = {
         "assets": [
-            "Cash", "Inventory", "Accounts Receivable", "Equipment", 
+            "Cash", "Inventory", "Accounts Receivable", "Charity", "Equipment", 
             "Building", "Vehicle", "Accumulated Depreciation - Equipment", 
-            "Accumulated Depreciation - Building", "Accumulated Depreciation - Vehicle",
-            "Charity", "Investment"
+            "Accumulated Depreciation - Building", "Accumulated Depreciation - Vehicle", "Investment"
         ],
         "liabilities": ["Accounts Payable"],
         "equity": ["Share Capital - Ordinary", "Prive"]
@@ -859,100 +1320,125 @@ def get_trial_balance():
         "total_credit": total_credit
     })
 
+# GANTI SELURUH FUNGSI get_income_statement ANDA DENGAN VERSI DI BAWAH INI
+
 @app.route('/get_income_statement')
 def get_income_statement():
-    revenue = 0
-    expenses = 0
-    other_income = 0
-    other_expenses = 0
+    revenue_details = {}
+    operating_expense_details = {}
+    other_income_and_expense_details = {}
     
+    # Ambil saldo HPP secara spesifik
+    cogs_balance = abs(app_data["account_balances"].get("Cost of Goods Sold", 0))
+
     for account, balance in app_data["account_balances"].items():
-        if "Revenue" in account or "Sales Revenue" in account:
-            revenue += abs(balance)
-        elif "Expense" in account:
-            expenses += abs(balance)
-        elif "Investment Gain" in account or "Other Income" in account:
-            other_income += abs(balance)
-        elif "Investment Loss" in account:
-            other_expenses += abs(balance)
-    
-    gross_income = revenue
-    operating_income = gross_income - expenses
-    net_income = operating_income + other_income - other_expenses
+        balance_val = abs(float(balance or 0))
+        if balance_val == 0 or account == "Cost of Goods Sold" or account.startswith("Prive"):
+            continue
+
+        if any(k in account for k in ["Expense", "Loss"]):
+            if any(k in account for k in ["Loss"]):
+                other_income_and_expense_details[account] = -balance_val
+            else:
+                operating_expense_details[account] = balance_val
+        elif any(k in account for k in ["Revenue", "Sales", "Gain"]):
+            if any(k in account for k in ["Gain"]):
+                other_income_and_expense_details[account] = balance_val
+            else:
+                revenue_details[account] = balance_val
+
+    # Kalkulasi Laba Rugi dengan Laba Kotor
+    total_revenue = sum(revenue_details.values())
+    gross_profit = total_revenue - cogs_balance
+    total_operating_expenses = sum(operating_expense_details.values())
+    operating_income = gross_profit - total_operating_expenses
+    total_other_income_and_expenses = sum(other_income_and_expense_details.values())
+    net_income = operating_income + total_other_income_and_expenses
     
     return jsonify({
-        "revenue": revenue,
-        "expenses": expenses,
-        "other_income": other_income,
-        "other_expenses": other_expenses,
-        "gross_income": gross_income,
+        "revenue_details": revenue_details,
+        "cogs": cogs_balance,
+        "gross_profit": gross_profit,
+        "operating_expense_details": operating_expense_details,
+        "other_income_and_expense_details": other_income_and_expense_details,
+        "total_revenue": total_revenue,
+        "total_operating_expenses": total_operating_expenses,
+        "total_other_income_and_expenses": total_other_income_and_expenses,
         "operating_income": operating_income,
         "net_income": net_income
     })
+    
+# GANTI FUNGSI LAMA get_balance_sheet DENGAN YANG INI
 
 @app.route('/get_balance_sheet')
 def get_balance_sheet():
-    # Calculate Net Income first
-    revenue = 0
-    expenses = 0
-    
+    # Tahap 1: Klasifikasi Akun (Sama seperti sebelumnya)
+    asset_accounts = {}
+    liability_accounts = {}
+    equity_accounts = {}
+
+    income_statement_data = get_income_statement().get_json()
+    net_income_for_period = income_statement_data.get('net_income', 0)
+
     for account, balance in app_data["account_balances"].items():
-        if "Revenue" in account or "Sales" in account:
-            revenue += abs(balance)
-        elif "Expense" in account or any(expense in account for expense in expense_types["en"]):
-            expenses += abs(balance)
-    
-    net_income = revenue - expenses
-    
-    # Define detailed account structure
-    asset_accounts = {
-        "Cash": app_data["account_balances"].get("Cash", 0),
-        "Inventory": app_data["account_balances"].get("Inventory", 0),
-        "Accounts Receivable": app_data["account_balances"].get("Accounts Receivable", 0),
-        "Equipment": app_data["account_balances"].get("Equipment", 0),
-        "Building": app_data["account_balances"].get("Building", 0),
-        "Vehicle": app_data["account_balances"].get("Vehicle", 0),
-        "Accumulated Depreciation - Equipment": app_data["account_balances"].get("Accumulated Depreciation - Equipment", 0),
-        "Accumulated Depreciation - Building": app_data["account_balances"].get("Accumulated Depreciation - Building", 0),
-        "Accumulated Depreciation - Vehicle": app_data["account_balances"].get("Accumulated Depreciation - Vehicle", 0),
-        "Charity": app_data["account_balances"].get("Charity", 0),
-        "Investment": app_data["account_balances"].get("Investment", 0)
-    }
-    
-    liability_accounts = {
-        "Accounts Payable": app_data["account_balances"].get("Accounts Payable", 0)
-    }
-    
-    # Share Capital - Ordinary includes Net Income/Loss
-    share_capital_ordinary = app_data["account_balances"].get("Share Capital - Ordinary", 0) + net_income
-    prive = app_data["account_balances"].get("Prive", 0)
-    
-    equity_accounts = {
-        "Share Capital - Ordinary": share_capital_ordinary,
-        "Prive": prive
-    }
-    
-    # Calculate totals
+        if any(k in account for k in ["Revenue", "Sales", "Gain", "Expense", "Loss", "Cost of Goods Sold", "Income Summary"]):
+            continue
+        
+        if any(acc_type in account for acc_type in ["Cash", "Inventory", "Accounts Receivable", "Charity", "Equipment", "Building", "Vehicle", "Investment", "Accumulated Depreciation"]):
+            asset_accounts[account] = balance
+        elif "Payable" in account:
+            liability_accounts[account] = balance
+        elif any(acc_type in account for acc_type in ["Share Capital", "Prive", "Retained Earnings"]):
+            equity_accounts[account] = balance
+
+    # Tahap 2: Hitung Total (Sama seperti sebelumnya, menggunakan data rinci)
     total_assets = 0
-    for account, balance in asset_accounts.items():
-        if "Accumulated Depreciation" in account:
-            # Accumulated depreciation reduces total assets
-            total_assets -= abs(balance)
+    for account_name, balance_val in asset_accounts.items():
+        if "Accumulated Depreciation" in account_name:
+            total_assets += balance_val
         else:
-            total_assets += abs(balance)
+            total_assets += balance_val
+
+    total_liabilities = abs(sum(liability_accounts.values()))
     
-    total_liabilities = sum(abs(balance) for balance in liability_accounts.values())
-    total_equity = share_capital_ordinary - abs(prive)  # Prive reduces equity
+    share_capital = abs(equity_accounts.get("Share Capital - Ordinary", 0))
+    retained_earnings_balance = equity_accounts.get("Retained Earnings", 0)
+    prive = abs(equity_accounts.get("Prive", 0))
+    total_equity = share_capital + retained_earnings_balance + net_income_for_period - prive
+    total_liabilities_equity = total_liabilities + total_equity
+
+    # --- TAHAP 3: KONSOLIDASI DATA UNTUK TAMPILAN (INI BAGIAN BARUNYA) ---
+    consolidated_asset_accounts = defaultdict(float)
+    for account, balance in asset_accounts.items():
+        if 'Accounts Receivable' in account:
+            consolidated_asset_accounts['Accounts Receivable'] += balance
+        # Tambahkan logika serupa untuk akun lain jika perlu dikonsolidasi
+        # Contoh: elif 'Inventory' in account: consolidated_asset_accounts['Inventory'] += balance
+        else:
+            consolidated_asset_accounts[account] = balance
+            
+    consolidated_liability_accounts = defaultdict(float)
+    for account, balance in liability_accounts.items():
+        if 'Accounts Payable' in account:
+            consolidated_liability_accounts['Accounts Payable'] += balance
+        else:
+            consolidated_liability_accounts[account] = balance
     
+    # Akun Ekuitas biasanya sudah unik, tidak perlu konsolidasi
+    if net_income_for_period != 0:
+        equity_accounts["Retained Earnings"] = net_income_for_period
+
+    # Tahap 4: Kirim data yang SUDAH DIKONSOLIDASI ke frontend
     return jsonify({
-        "asset_accounts": asset_accounts,
-        "liability_accounts": liability_accounts,
+        # Mengirim akun yang sudah digabung
+        "asset_accounts": consolidated_asset_accounts,
+        "liability_accounts": consolidated_liability_accounts,
         "equity_accounts": equity_accounts,
-        "net_income": net_income,
+        # Total tetap sama, tidak berubah
         "total_assets": total_assets,
         "total_liabilities": total_liabilities,
         "total_equity": total_equity,
-        "total_liabilities_equity": total_liabilities + total_equity
+        "total_liabilities_equity": total_liabilities_equity
     })
 
 @app.route('/record_lending', methods=['POST'])
@@ -961,32 +1447,25 @@ def record_lending():
         data = request.json
         borrower_name = data['borrower_name']
         amount = float(data['amount'])
-        description = data.get('description', '')
+        description = data.get('description', 'Loan Given')
         date = get_current_date()
         
-        # Journal entry: Dr. Loans Receivable, Cr. Cash
+        # Menggunakan Akun: Accounts Receivable - Nama Peminjam
         create_journal_entry(
             date=date,
-            description=f"Loan given to {borrower_name}: {description}",
-            debit_account=f"Loans Receivable - {borrower_name}",
+            description=f"Loan given to {borrower_name}",
+            debit_account=f"Accounts Receivable - {borrower_name}", # KEMBALI KE ACCOUNTS RECEIVABLE
             debit_amount=amount,
             credit_account="Cash",
             credit_amount=amount
         )
         
-        # Add to debtors list (loans given)
         app_data["debtor_list"].append({
-            'name': borrower_name,
-            'amount': amount,
-            'date': date,
-            'type': 'loan',
-            'description': description
+            'name': borrower_name, 'amount': amount, 'date': date,
+            'type': 'loan', 'description': description
         })
         
-        return jsonify({
-            'success': True,
-            'message': f'Loan of {amount:,.2f} given to {borrower_name} recorded successfully'
-        })
+        return jsonify({'success': True, 'message': f'Loan to {borrower_name} recorded successfully'})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
@@ -996,32 +1475,25 @@ def record_borrowing():
         data = request.json
         lender_name = data['lender_name']
         amount = float(data['amount'])
-        description = data.get('description', '')
+        description = data.get('description', 'Loan Received')
         date = get_current_date()
         
-        # Journal entry: Dr. Cash, Cr. Loans Payable
+        # Menggunakan Akun: Accounts Payable - Nama Pemberi Pinjaman
         create_journal_entry(
             date=date,
-            description=f"Loan received from {lender_name}: {description}",
+            description=f"Loan received from {lender_name}",
             debit_account="Cash",
             debit_amount=amount,
-            credit_account=f"Loans Payable - {lender_name}",
+            credit_account=f"Accounts Payable - {lender_name}", # KEMBALI KE ACCOUNTS PAYABLE
             credit_amount=amount
         )
         
-        # Add to creditors list (loans received)
         app_data["creditor_list"].append({
-            'name': lender_name,
-            'amount': amount,
-            'date': date,
-            'type': 'loan',
-            'description': description
+            'name': lender_name, 'amount': amount, 'date': date,
+            'type': 'loan', 'description': description
         })
         
-        return jsonify({
-            'success': True,
-            'message': f'Loan of {amount:,.2f} received from {lender_name} recorded successfully'
-        })
+        return jsonify({'success': True, 'message': f'Loan from {lender_name} recorded successfully'})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
@@ -1031,53 +1503,26 @@ def record_loan_payment():
         data = request.json
         borrower_name = data['borrower_name']
         payment_amount = float(data['payment_amount'])
-        purchase_description = data.get('purchase_description', '')
         date = get_current_date()
         
-        # Find borrower
-        borrower = None
-        for i, debtor in enumerate(app_data["debtor_list"]):
-            if debtor['name'] == borrower_name and debtor.get('type') == 'loan':
-                borrower = debtor
-                break
+        borrower = next((d for d in app_data["debtor_list"] if d['name'] == borrower_name and d.get('type') == 'loan'), None)
+        if not borrower: return jsonify({'success': False, 'message': 'Borrower not found'})
+        if payment_amount > borrower['amount']: return jsonify({'success': False, 'message': 'Payment exceeds balance'})
         
-        if not borrower:
-            return jsonify({'success': False, 'message': 'Borrower not found'})
+        # Menggunakan Akun: Accounts Receivable - Nama Peminjam
+        create_journal_entry(
+            date=date,
+            description=f"Loan payment from {borrower_name}",
+            debit_account="Cash",
+            debit_amount=payment_amount,
+            credit_account=f"Accounts Receivable - {borrower_name}", # KEMBALI KE ACCOUNTS RECEIVABLE
+            credit_amount=payment_amount
+        )
         
-        if payment_amount > borrower['amount']:
-            return jsonify({'success': False, 'message': 'Payment amount exceeds loan balance'})
-        
-        # Journal entry for loan payment
-        if purchase_description:
-            # If there's a purchase with receivable
-            create_journal_entry(
-                date=date,
-                description=f"Loan payment from {borrower_name} used for: {purchase_description}",
-                debit_account="Inventory" if "inventory" in purchase_description.lower() else "Equipment",
-                debit_amount=payment_amount,
-                credit_account=f"Loans Receivable - {borrower_name}",
-                credit_amount=payment_amount
-            )
-        else:
-            # Regular cash payment
-            create_journal_entry(
-                date=date,
-                description=f"Loan payment received from {borrower_name}",
-                debit_account="Cash",
-                debit_amount=payment_amount,
-                credit_account=f"Loans Receivable - {borrower_name}",
-                credit_amount=payment_amount
-            )
-        
-        # Update borrower balance
         borrower['amount'] -= payment_amount
-        if borrower['amount'] <= 0:
-            app_data["debtor_list"].remove(borrower)
+        if borrower['amount'] < 0.01: app_data["debtor_list"].remove(borrower)
         
-        return jsonify({
-            'success': True,
-            'message': f'Loan payment of {payment_amount:,.2f} from {borrower_name} recorded successfully'
-        })
+        return jsonify({'success': True, 'message': f'Payment from {borrower_name} recorded successfully'})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
@@ -1089,38 +1534,24 @@ def record_debt_repayment():
         payment_amount = float(data['payment_amount'])
         date = get_current_date()
         
-        # Find lender
-        lender = None
-        for i, creditor in enumerate(app_data["creditor_list"]):
-            if creditor['name'] == lender_name and creditor.get('type') == 'loan':
-                lender = creditor
-                break
+        lender = next((c for c in app_data["creditor_list"] if c['name'] == lender_name and c.get('type') == 'loan'), None)
+        if not lender: return jsonify({'success': False, 'message': 'Lender not found'})
+        if payment_amount > lender['amount']: return jsonify({'success': False, 'message': 'Payment exceeds balance'})
         
-        if not lender:
-            return jsonify({'success': False, 'message': 'Lender not found'})
-        
-        if payment_amount > lender['amount']:
-            return jsonify({'success': False, 'message': 'Payment amount exceeds debt balance'})
-        
-        # Journal entry: Dr. Loans Payable, Cr. Cash
+        # Menggunakan Akun: Accounts Payable - Nama Pemberi Pinjaman
         create_journal_entry(
             date=date,
             description=f"Debt payment to {lender_name}",
-            debit_account=f"Loans Payable - {lender_name}",
+            debit_account=f"Accounts Payable - {lender_name}", # KEMBALI KE ACCOUNTS PAYABLE
             debit_amount=payment_amount,
             credit_account="Cash",
             credit_amount=payment_amount
         )
         
-        # Update lender balance
         lender['amount'] -= payment_amount
-        if lender['amount'] <= 0:
-            app_data["creditor_list"].remove(lender)
+        if lender['amount'] < 0.01: app_data["creditor_list"].remove(lender)
         
-        return jsonify({
-            'success': True,
-            'message': f'Debt payment of {payment_amount:,.2f} to {lender_name} recorded successfully'
-        })
+        return jsonify({'success': True, 'message': f'Payment to {lender_name} recorded successfully'})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
@@ -1139,61 +1570,62 @@ def get_sales_receivables():
     sales_receivables = [debtor for debtor in app_data["debtor_list"] if debtor.get('type') == 'sales']
     return jsonify(sales_receivables)
 
-@app.route('/record_sales_receivable_payment', methods=['POST'])
-def record_sales_receivable_payment():
-    try:
-        data = request.json
-        customer_name = data['customer_name']
-        payment_amount = float(data['payment_amount'])
-        purchase_description = data.get('purchase_description', '')
-        date = get_current_date()
+# app.py
+
+@app.route('/undo_last_transaction', methods=['POST'])
+def undo_last_transaction():
+    """
+    Membatalkan transaksi terakhir. Dibuat lebih pintar untuk menangani
+    transaksi penjualan yang terdiri dari 2 jurnal (Revenue & COGS).
+    """
+    if not app_data["journal_entries"]:
+        return jsonify({"success": False, "message": "No transaction to undo."}), 400
+
+    last_entry = app_data["journal_entries"][-1]
+
+    # Mencegah pembatalan ganda
+    if last_entry.get("description", "").startswith("Undo of:"):
+        return jsonify({"success": False, "message": "Cannot undo an undo action."}), 400
+
+    entries_to_reverse = []
+    final_message = ""
+
+    # --- LOGIKA BARU UNTUK MENDETEKSI TRANSAKSI PENJUALAN ---
+    # Cek apakah entri terakhir adalah entri COGS dari penjualan
+    is_cogs_entry = "Cost of goods sold for sale to" in last_entry.get("description", "")
+    
+    # Jika ya, dan ada lebih dari 1 entri di jurnal
+    if is_cogs_entry and len(app_data["journal_entries"]) > 1:
+        previous_entry = app_data["journal_entries"][-2]
+        # Cek apakah entri sebelumnya adalah entri penjualan
+        is_sales_entry = "Sale to" in previous_entry.get("description", "")
         
-        # Find customer
-        customer = None
-        for i, debtor in enumerate(app_data["debtor_list"]):
-            if debtor['name'] == customer_name and debtor.get('type') == 'sales':
-                customer = debtor
-                break
-        
-        if not customer:
-            return jsonify({'success': False, 'message': 'Customer not found'})
-        
-        if payment_amount > customer['amount']:
-            return jsonify({'success': False, 'message': 'Payment amount exceeds receivable balance'})
-        
-        # Journal entry for receivable payment
-        if purchase_description:
-            # If there's a purchase with receivable settlement
-            create_journal_entry(
-                date=date,
-                description=f"Sales receivable payment from {customer_name} used for: {purchase_description}",
-                debit_account="Inventory" if "inventory" in purchase_description.lower() else "Equipment",
-                debit_amount=payment_amount,
-                credit_account="Accounts Receivable",
-                credit_amount=payment_amount
-            )
-        else:
-            # Regular cash payment
-            create_journal_entry(
-                date=date,
-                description=f"Sales receivable payment received from {customer_name}",
-                debit_account="Cash",
-                debit_amount=payment_amount,
-                credit_account="Accounts Receivable",
-                credit_amount=payment_amount
-            )
-        
-        # Update customer balance
-        customer['amount'] -= payment_amount
-        if customer['amount'] <= 0:
-            app_data["debtor_list"].remove(customer)
-        
-        return jsonify({
-            'success': True,
-            'message': f'Sales receivable payment of {payment_amount:,.2f} from {customer_name} recorded successfully'
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)})
+        # Jika kedua kondisi terpenuhi, kita batalkan keduanya
+        if is_sales_entry:
+            entries_to_reverse.append(previous_entry)
+            entries_to_reverse.append(last_entry)
+            final_message = f"Successfully undone the entire sale transaction: {previous_entry['description']}"
+    
+    # Jika bukan transaksi penjualan ganda, atau jika hanya ada 1 entri
+    if not entries_to_reverse:
+        entries_to_reverse.append(last_entry)
+        final_message = f"Successfully undone transaction: {last_entry['description']}"
+
+    # Lakukan proses jurnal pembalik untuk semua entri yang telah diidentifikasi
+    for entry in reversed(entries_to_reverse): # Dibalik agar urutan pembatalan logis
+        create_journal_entry(
+            date=get_current_date(),
+            description=f"Undo of: {entry['description']}",
+            debit_account=entry['credit_account'],
+            debit_amount=entry['credit_amount'],
+            credit_account=entry['debit_account'],
+            credit_amount=entry['debit_amount']
+        )
+
+    return jsonify({
+        "success": True, 
+        "message": final_message
+    })
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
